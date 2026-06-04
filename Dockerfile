@@ -9,14 +9,16 @@ WORKDIR /app
 # Copiar archivos de configuración primero para aprovechar el caché
 COPY frontend/package.json frontend/package-lock.json* ./
 
+# Ejecutar el build
+RUN npm run build
+
 # Instalar dependencias puras en el contenedor
 RUN npm install
 
 # Copiar el resto del código
 COPY frontend/ .
 
-# Ejecutar el build
-RUN npm run build
+
 
 # Etapa 2: Servidor
 FROM node:18-alpine
