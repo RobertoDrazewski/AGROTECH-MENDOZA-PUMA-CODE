@@ -1,29 +1,28 @@
 # Etapa 1: Construcción
 FROM node:18-alpine AS builder
 
-# Instalar dependencias necesarias para compilar binarios de C++ (requerido por PostCSS)
+# Instalar dependencias necesarias para compilar binarios
 RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# Copiar archivos de configuración primero para aprovechar el caché
+# 1. Copiar los archivos de dependencias
 COPY frontend/package.json frontend/package-lock.json* ./
 
-# Ejecutar el build
-RUN npm run build
-
-# Instalar dependencias puras en el contenedor
+# 2. INSTALAR DEPENDENCIAS PRIMERO (Esto es lo que faltaba)
 RUN npm install
 
-# Copiar el resto del código
+# 3. Copiar el resto del código fuente del frontend
 COPY frontend/ .
 
-
+# 4. AHORA SÍ: Ejecutar el build
+RUN npm run build
 
 # Etapa 2: Servidor
 FROM node:18-alpine
 WORKDIR /app
 RUN npm install -g serve
+# Copiamos solo la carpeta de producción generada en la etapa anterior
 COPY --from=builder /app/dist /app/dist
 
 EXPOSE 3000
