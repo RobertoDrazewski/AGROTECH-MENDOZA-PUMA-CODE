@@ -23,6 +23,8 @@ const apiService = {
   getModeloFito:        async () => (await api.get('/fitosanitario/modelo')).data,
   comandoRiego:         async (id, accion) => (await api.post(`/riego/${id}/comando`, { accion })).data,
   chat:                 async (message, history = []) => (await api.post('/chat', { message, history })).data,
+  enviarContacto:       async (data) => (await api.post('/contacto', data)).data,
+  pedirPresupuesto:     async (chatHistory, userData) => (await api.post('/presupuesto', { chatHistory, userData })).data,
   // Auth
   login:                async (username, password) => (await api.post('/auth/login', { username, password })).data,
   setupPassword:        async (email, password) => (await api.post('/auth/setup-password', { email, password })).data,

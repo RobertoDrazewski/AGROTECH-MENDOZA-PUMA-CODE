@@ -34,6 +34,17 @@ class Settings(BaseSettings):
     # Integraciones externas
     OPENWEATHER_API_KEY: str | None = Field(default=None, validation_alias="OPENWEATHER_API_KEY")
     OPENAI_API_KEY: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
+    OPENAI_MODEL: str = Field(default="gpt-4o-mini", validation_alias="OPENAI_MODEL")
+
+    # Correo (Gmail Workspace / App Password) — mismo sistema que puma-code
+    GMAIL_USER: str = Field(default="info@puma-code.com", validation_alias="GMAIL_USER")
+    GMAIL_APP_PASSWORD: str | None = Field(default=None, validation_alias="GMAIL_APP_PASSWORD")
+    EMAIL_INFO: str = Field(default="info@puma-code.com", validation_alias="EMAIL_INFO")
+    EMAIL_SECURITY: str = Field(default="security@puma-code.com", validation_alias="EMAIL_SECURITY")
+
+    # Dólar / financiación (para el presupuesto)
+    DOLAR_TIPO: str = Field(default="blue", validation_alias="DOLAR_TIPO")
+    DOLAR_FALLBACK: float = Field(default=1450.0, validation_alias="DOLAR_FALLBACK")
 
     # Coordenadas de referencia (Luján de Cuyo, Mendoza)
     LAT: float = -33.0386

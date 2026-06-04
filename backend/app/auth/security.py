@@ -1,6 +1,8 @@
-"""Seguridad ligera del panel admin (solo librería estándar de Python).
-Hash de contraseñas con PBKDF2-HMAC-SHA256 y tokens firmados con HMAC.
-Almacén de administradores en un archivo JSON local (admins.json)."""
+"""Seguridad del panel admin.
+- Hash de contraseñas (PBKDF2) y tokens firmados (HMAC): librería estándar.
+- Almacén de administradores: tabla `admins` en MySQL (vía SQLAlchemy).
+Las importaciones de base de datos son perezosas para no romper el arranque
+si faltara la configuración."""
 import os
 import json
 import hmac
@@ -8,9 +10,6 @@ import time
 import base64
 import hashlib
 from app.core.config import settings
-
-_BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ADMINS_FILE = os.path.join(_BASE, "admins.json")
 
 
 # ---------- Hash de contraseñas ----------
@@ -59,49 +58,75 @@ def verify_token(token: str):
         return None
 
 
-# ---------- Almacén de administradores ----------
-def _load() -> dict:
-    if not os.path.exists(ADMINS_FILE):
-        return {}
-    try:
-        with open(ADMINS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def _save(data: dict):
-    with open(ADMINS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+# ---------- Almacén de administradores (MySQL) ----------
+def _session():
+    from app.db.database import get_session
+    return get_session()
 
 
 def get_admin(username: str):
-    return _load().get(username.lower())
+    """Devuelve un dict del admin por username, o None."""
+    from app.db import models
+    s = _session()
+    try:
+        a = s.query(models.Admin).filter_by(username=username.lower()).first()
+        if not a:
+            return None
+        return {"username": a.username, "nombre": a.nombre, "email": a.email,
+                "password_hash": a.password_hash, "rol": a.rol, "activo": a.activo}
+    finally:
+        s.close()
 
 
 def list_admins():
-    return [{"username": u, "nombre": v.get("nombre"), "email": v.get("email"),
-             "activo": v.get("password_hash") is not None}
-            for u, v in _load().items()]
+    from app.db import models
+    s = _session()
+    try:
+        rows = s.query(models.Admin).order_by(models.Admin.id).all()
+        return [{"username": a.username, "nombre": a.nombre, "email": a.email,
+                 "rol": a.rol, "activo": bool(a.activo)} for a in rows]
+    finally:
+        s.close()
 
 
 def create_invite(nombre: str, email: str) -> str:
-    """Crea un admin SIN contraseña (pendiente de activación). Devuelve el username."""
-    data = _load()
-    username = email.split("@")[0].lower().replace(" ", ".")
-    data[username] = {"nombre": nombre, "email": email.lower(), "password_hash": None}
-    _save(data)
-    return username
+    """Crea un admin SIN contraseña (pendiente de activar). Devuelve el username."""
+    from app.db import models
+    s = _session()
+    try:
+        username = email.split("@")[0].lower().replace(" ", ".")
+        existing = s.query(models.Admin).filter_by(username=username).first()
+        if existing:
+            return username
+        s.add(models.Admin(username=username, nombre=nombre, email=email.lower(),
+                           rol="operador", activo=False, password_hash=None))
+        s.commit()
+        return username
+    finally:
+        s.close()
 
 
 def set_password(email_or_user: str, password: str):
-    data = _load()
-    key = email_or_user.lower()
-    # buscar por username o por email
-    target = key.split("@")[0] if "@" in key else key
-    if target not in data:
-        # crear si no existía (auto-registro del primer admin)
-        data[target] = {"nombre": target, "email": key if "@" in key else f"{target}@bodega.com"}
-    data[target]["password_hash"] = hash_password(password)
-    _save(data)
-    return target
+    """Define la contraseña (activa el acceso). Crea el admin si no existía."""
+    from app.db import models
+    s = _session()
+    try:
+        key = email_or_user.lower()
+        admin = None
+        if "@" in key:
+            admin = s.query(models.Admin).filter_by(email=key).first()
+            username = key.split("@")[0].replace(" ", ".")
+        else:
+            username = key
+            admin = s.query(models.Admin).filter_by(username=username).first()
+        if not admin:
+            admin = models.Admin(username=username, nombre=username,
+                                 email=key if "@" in key else f"{username}@bodega.com",
+                                 rol="operador")
+            s.add(admin)
+        admin.password_hash = hash_password(password)
+        admin.activo = True
+        s.commit()
+        return admin.username
+    finally:
+        s.close()

@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.simulator.vinedo_simulator import vinedo_sim
 from app.models.vinedo import db_vinedos
-from app.api import telemetry, predictions, clima, riego, chat, auth, fitosanitario, db_admin
+from app.api import telemetry, predictions, clima, riego, chat, auth, fitosanitario, db_admin, comercial
 
 
 def run_simulator():
@@ -55,6 +55,7 @@ app.include_router(chat.router, prefix=P)
 app.include_router(auth.router, prefix=P)
 app.include_router(fitosanitario.router, prefix=P)
 app.include_router(db_admin.router, prefix=P)
+app.include_router(comercial.router, prefix=P)
 
 
 @app.get(f"{P}/vinedos", tags=["Telemetría"])
