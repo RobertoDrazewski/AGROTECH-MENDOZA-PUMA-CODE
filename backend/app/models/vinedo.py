@@ -1,0 +1,51 @@
+"""Almacenamiento en memoria (RAM) de telemetría por cuartel.
+En producción se reemplaza por PostgreSQL / TimescaleDB."""
+from datetime import datetime
+from typing import List, Dict, Any
+
+
+class VinedoStorage:
+    def __init__(self):
+        self._db: Dict[str, List[Dict[str, Any]]] = {}
+        self._global_id_counter = 1
+        # Metadatos geográficos de cada cuartel (Luján de Cuyo, Mendoza)
+        self.meta: Dict[str, Dict[str, Any]] = {}
+
+    def register_cuartel(self, vinedo_id: str, variedad: str, hectareas: float,
+                         lat: float, lon: float):
+        self.meta[vinedo_id] = {
+            "vinedo_id": vinedo_id,
+            "variedad": variedad,
+            "hectareas": hectareas,
+            "lat": lat,
+            "lon": lon,
+        }
+
+    def save_telemetry(self, telemetry_data: Dict[str, Any]) -> Dict[str, Any]:
+        vinedo_id = telemetry_data["vinedo_id"]
+        if vinedo_id not in self._db:
+            self._db[vinedo_id] = []
+        full_record = {
+            "id": self._global_id_counter,
+            "timestamp": telemetry_data.get("timestamp") or datetime.utcnow(),
+            **telemetry_data,
+            "alerta_helada": telemetry_data["temp_aire"] <= 2.0,
+        }
+        self._db[vinedo_id].append(full_record)
+        self._global_id_counter += 1
+        # Limitar el historial en memoria a 1000 lecturas por cuartel
+        if len(self._db[vinedo_id]) > 1000:
+            self._db[vinedo_id] = self._db[vinedo_id][-1000:]
+        return full_record
+
+    def get_history(self, vinedo_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        return self._db.get(vinedo_id, [])[-limit:]
+
+    def get_all_vinedos_ids(self) -> List[str]:
+        return list(self._db.keys())
+
+    def get_meta(self, vinedo_id: str) -> Dict[str, Any]:
+        return self.meta.get(vinedo_id, {})
+
+
+db_vinedos = VinedoStorage()
