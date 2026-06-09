@@ -61,7 +61,8 @@ export default function NavBar() {
               <a key={l.href} href={l.href} onClick={() => setOpen(false)}
                 className="text-sm font-black uppercase text-white hover:text-[#9bcc44]">{l.label}</a>
             ))}
-            <a href="/login" className="text-sm font-black uppercase text-[#9bcc44]">Acceso Bodega →</a>
+            <a href="/login" onClick={() => setOpen(false)}
+              className="text-sm font-black uppercase text-[#9bcc44]">Acceso Bodega →</a>
           </div>
         </div>
       )}
