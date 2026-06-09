@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const BASE = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000') + '/api/v1';
+const BASE = (import.meta.env.VITE_API_URL || 'https://agrotech-mendoza-puma-code-production.up.railway.app') + '/api/v1';
 const api = axios.create({ baseURL: BASE });
 
 // Adjunta el token del panel admin si existe
