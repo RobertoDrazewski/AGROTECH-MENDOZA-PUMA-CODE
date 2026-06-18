@@ -1,13 +1,21 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import {
-  Grape, Loader2, LayoutDashboard, CloudSnow, Droplets,
+  Loader2, LayoutDashboard, CloudSnow, Droplets,
   BarChart3, Users, LogOut, Menu, X, ExternalLink, Leaf, Bug,
 } from 'lucide-react';
 
 import Home from './Home';
 import Login from './components/admin/Login';
 import SetupPassword from './components/admin/SetupPassword';
+
+// Importación de componentes de la Landing Page
+import Hero from './components/landing/Hero';
+import Services from './components/landing/Services';
+import Industries from './components/landing/Industries';
+import VideoSection from './components/landing/VideoSection';
+import LiveDemo from './components/landing/LiveDemo';
+import Contact from './components/landing/Contact';
 
 const TabTelemetria = React.lazy(() => import('./components/admin/TabTelemetria'));
 const TabHeladas    = React.lazy(() => import('./components/admin/TabHeladas'));
@@ -16,7 +24,6 @@ const TabAnalisis   = React.lazy(() => import('./components/admin/TabAnalisis'))
 const TabFitosanitario = React.lazy(() => import('./components/admin/TabFitosanitario'));
 const TabStaff      = React.lazy(() => import('./components/admin/TabStaff'));
 
-// ───────────────────────── ROOT ─────────────────────────
 export default function App() {
   const [authToken, setAuthToken] = useState(localStorage.getItem('token'));
   const [checking, setChecking] = useState(true);
@@ -35,7 +42,17 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Home />} />
+        {/* Rutas Públicas de Ventanas Independientes */}
+        <Route path="/" element={<Home />}>
+          <Route index element={<Hero />} />
+          <Route path="servicios" element={<Services />} />
+          <Route path="industrias" element={<Industries />} />
+          <Route path="video" element={<VideoSection />} />
+          <Route path="demo" element={<LiveDemo />} />
+          <Route path="contacto" element={<Contact />} />
+        </Route>
+
+        {/* Rutas Privadas */}
         <Route path="/setup-password" element={<SetupPassword />} />
         <Route path="/login" element={
           authToken ? <Navigate to="/admin" replace />
@@ -54,7 +71,6 @@ export default function App() {
   );
 }
 
-// ───────────────────────── ADMIN LAYOUT ─────────────────────────
 function AdminLayout({ onLogout }) {
   const [activeTab, setActiveTab] = useState('TabTelemetria');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -78,13 +94,11 @@ function AdminLayout({ onLogout }) {
 
   return (
     <div className="min-h-screen bg-[#0e1512] text-white font-sans antialiased flex relative">
-      {/* Hamburguesa mobile */}
       <button onClick={() => setSidebarOpen(!sidebarOpen)}
         className="lg:hidden fixed top-4 left-4 z-50 p-2.5 bg-[#18211b] border border-[#2a3a2c] rounded-xl text-white shadow-2xl">
         {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
       </button>
 
-      {/* Sidebar */}
       <aside className={`fixed lg:static inset-y-0 left-0 w-72 bg-[#18211b] border-r border-[#2a3a2c]/60 flex flex-col transition-transform duration-300 z-40 p-5 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="pt-2 lg:pt-0 border-b border-[#2a3a2c]/50 pb-4 mb-4 flex items-center gap-2.5">
           <div className="p-2 bg-[#9bcc44]/10 rounded-xl text-[#9bcc44] border border-[#9bcc44]/20">
@@ -133,7 +147,6 @@ function AdminLayout({ onLogout }) {
         </div>
       </aside>
 
-      {/* Contenido */}
       <div className="flex-1 min-w-0 min-h-screen flex flex-col bg-[#0e1512]">
         <header className="h-20 border-b border-[#2a3a2c]/30 px-6 lg:px-10 flex items-center justify-between bg-[#18211b]/10 backdrop-blur-md sticky top-0 z-30">
           <div className="pl-12 lg:pl-0 text-left">
