@@ -7,5 +7,5 @@ python-dotenv==1.0.1
 requests==2.32.3
 sqlalchemy==2.0.35
 pymysql==1.1.1
-# Opcional (solo si usa el chat con OpenAI real):
-# openai==1.51.0
+certifi==2024.8.30
+openai==1.51.0

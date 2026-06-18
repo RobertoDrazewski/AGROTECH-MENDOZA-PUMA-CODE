@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { Play } from 'lucide-react';
-import promoVideo from '../../assets/gemini_generated_video_341DC080.mp4';
 
 export default function VideoSection() {
   const [playing, setPlaying] = useState(false);
@@ -31,7 +30,7 @@ export default function VideoSection() {
       <div className="relative rounded-[2rem] overflow-hidden border border-[#2a3a2c]/60 aspect-video bg-[#18211b] shadow-2xl group">
         <video 
           ref={videoRef}
-          src={promoVideo}
+          src="/promo.mp4"
           controls={playing}
           playsInline
           className="w-full h-full object-cover"

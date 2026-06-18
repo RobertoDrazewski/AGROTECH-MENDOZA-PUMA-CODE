@@ -1,5 +1,25 @@
-__pycache__/
-*.pyc
-venv/
+# Entorno y credenciales — NUNCA subir al repo
 .env
-admins.json
+*.env
+backend/.env
+frontend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+backend/venv/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+
+# Sistema
+.DS_Store
+*.log
+
+# Temporales
+test.txt

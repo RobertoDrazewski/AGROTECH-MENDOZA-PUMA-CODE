@@ -1,0 +1,37 @@
+{
+  "name": "AgroTech Mendoza · by Puma-Code",
+  "short_name": "AgroTech",
+  "description": "Telemetría IoT, IA y riego inteligente para viñedos y bodegas. Por Puma-Code.com",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0e1512",
+  "theme_color": "#9bcc44",
+  "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
