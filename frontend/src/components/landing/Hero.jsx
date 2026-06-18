@@ -14,33 +14,39 @@ export default function Hero() {
         }} />
       <div className="absolute top-0 left-0 w-[40rem] h-[40rem] bg-[#9bcc44]/10 blur-[160px] rounded-full -z-10" />
 
-      <div className="max-w-[1440px] mx-auto px-6 md:px-12 grid lg:grid-cols-2 gap-12 items-center w-full">
-        {/* Columna de Texto e Imagen */}
-        <div className="animate-fade-up flex flex-col items-start">
-          {/* Logo incorporado arriba a la izquierda - Tamaño duplicado */}
+      <div className="max-w-[1440px] mx-auto px-6 md:px-12 w-full flex flex-col">
+        
+        {/* Superior: Logo al lado del Título */}
+        <div className="flex flex-col lg:flex-row items-center lg:items-center gap-8 lg:gap-16 animate-fade-up">
+          {/* Logo */}
           <img 
             src={logo} 
             alt="AgroTech Mendoza Logo" 
-            className="h-64 md:h-[22rem] w-auto object-contain mb-10" // h-64 (256px) / md:h-[22rem] (352px)
+            className="h-64 md:h-[22rem] w-auto object-contain shrink-0" 
           />
+          
+          {/* Texto al lado del logo */}
+          <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+            <span className="inline-flex items-center gap-2 bg-[#9bcc44]/10 border border-[#9bcc44]/25 text-[#9bcc44] text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full mb-6">
+              <Activity size={12} /> Agricultura 4.0 · IoT + IA · Mendoza
+            </span>
+            <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-[0.95] text-white">
+              Cuidamos tu <span className="text-[#9bcc44]">viñedo</span><br />
+              con datos en<br />tiempo real
+            </h1>
+          </div>
+        </div>
 
-          <span className="inline-flex items-center gap-2 bg-[#9bcc44]/10 border border-[#9bcc44]/25 text-[#9bcc44] text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full mb-6">
-            <Activity size={12} /> Agricultura 4.0 · IoT + IA · Mendoza
-          </span>
-
-          <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-[0.95] text-white">
-            Cuidamos tu <span className="text-[#9bcc44]">viñedo</span><br />
-            con datos en<br />tiempo real
-          </h1>
-
-          <p className="mt-6 text-base md:text-lg text-[#aebaa8] max-w-xl leading-relaxed">
+        {/* Medio: Descripción, Botones y Texto de Bodegas */}
+        <div className="mt-8 md:mt-12 animate-fade-up max-w-4xl flex flex-col items-center lg:items-start text-center lg:text-left">
+          <p className="text-base md:text-lg text-[#aebaa8] leading-relaxed">
             En <strong className="text-white">Puma-Code.com</strong> capturamos la telemetría de tu finca con
             sensores IoT y la convertimos en dashboards con KPIs, predicción de cosecha por IA,
             alertas de helada, granizo y estrés hídrico, y riego inteligente. Para que tomes
             decisiones antes de perder una sola hilera.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap justify-center lg:justify-start gap-3">
             <a href="#demo"
               className="inline-flex items-center gap-2 bg-[#9bcc44] text-[#0e1512] font-black uppercase tracking-widest text-xs px-6 py-4 rounded-2xl hover:bg-white transition-all">
               Ver demo en vivo <ArrowRight size={16} />
@@ -56,8 +62,8 @@ export default function Hero() {
           </p>
         </div>
 
-        {/* Tarjetas flotantes */}
-        <div className="grid grid-cols-2 gap-4 animate-fade-up">
+        {/* Final: Los 4 bloques extendidos horizontalmente */}
+        <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-up w-full">
           {[
             { icon: CloudSnow, t: 'Alerta de heladas', d: 'Aviso horas antes con punto de rocío y tendencia térmica.', c: 'text-cyan-300' },
             { icon: Grape, t: 'Cosecha óptima', d: 'IA sobre curva Brix/pH para definir la vendimia.', c: 'text-[#9bcc44]' },
@@ -74,6 +80,7 @@ export default function Hero() {
             );
           })}
         </div>
+
       </div>
     </header>
   );

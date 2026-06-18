@@ -1,30 +1,29 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, CheckCircle2, ShieldCheck, Loader2, Cpu } from 'lucide-react';
+import { Mail, Send, CheckCircle2, Loader2, Cpu, MessageCircle } from 'lucide-react';
 import apiService from '../../services/api';
 
 const EMAIL_INFO = 'info@puma-code.com';
-const EMAIL_SECURITY = 'security@puma-code.com';
-const TEL_DISPLAY = '+54 261 651 2165';
-const WHATSAPP = '5492616512165'; // 54 9 + 261 651 2165
+const WHATSAPP_LINK = 'https://wa.me/5492616512165';
 
 export default function Contact() {
   const [form, setForm] = useState({ nombre: '', bodega: '', email: '', telefono: '', mensaje: '' });
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(''); setSending(true);
+    setSending(true);
+
     try {
       await apiService.enviarContacto(form);
       setSent(true);
     } catch (err) {
-      const txt = encodeURIComponent(
-        `Hola AgroTech Mendoza! Soy ${form.nombre} de ${form.bodega}. Email: ${form.email}. ` +
-        `Tel: ${form.telefono}. Consulta: ${form.mensaje}`
+      console.error("Error en API, fallback a mailto:", err);
+      const subject = encodeURIComponent(`Consulta AgroTech - ${form.bodega || form.nombre}`);
+      const body = encodeURIComponent(
+        `Nombre: ${form.nombre}\nBodega: ${form.bodega}\nEmail: ${form.email}\nTel: ${form.telefono}\n\nMensaje:\n${form.mensaje}`
       );
-      window.open(`https://wa.me/${WHATSAPP}?text=${txt}`, '_blank');
+      window.location.href = `mailto:${EMAIL_INFO}?subject=${subject}&body=${body}`;
       setSent(true);
     } finally {
       setSending(false);
@@ -32,95 +31,65 @@ export default function Contact() {
   };
 
   return (
-    <section id="contacto" className="bg-[#121a14] border-t border-[#2a3a2c]/40 py-24">
-      <div className="max-w-[1100px] mx-auto px-6 md:px-12 grid lg:grid-cols-2 gap-12">
-        <div>
-          <span className="inline-flex items-center gap-2 text-[#9bcc44] text-[10px] font-black uppercase tracking-[0.25em]">
-            <Cpu size={12} /> Soluciones Hardware &amp; Software
-          </span>
-          <h2 className="text-3xl md:text-4xl font-black uppercase italic tracking-tight text-white mt-3">
-            Llevemos los datos a<br />tu <span className="text-[#9bcc44]">bodega</span>
-          </h2>
-          <p className="text-[#aebaa8] mt-5 leading-relaxed">
-            Contanos cuántas hectáreas tenés y qué querés resolver. Coordinamos una visita técnica
-            sin cargo y te armamos una propuesta a medida.
-          </p>
-
-          <div className="mt-8 space-y-4">
-            <a href={`mailto:${EMAIL_INFO}`}
-              className="flex items-center gap-3 text-[#cdd8c8] hover:text-[#9bcc44] transition-colors group">
-              <div className="w-10 h-10 rounded-xl bg-[#18211b] border border-[#2a3a2c]/60 flex items-center justify-center text-[#9bcc44] group-hover:border-[#9bcc44]/50">
-                <Mail size={18} />
+    <section id="contacto" className="relative py-24 border-t border-[#2a3a2c]/40 bg-[#0e1512] overflow-hidden">
+      <div className="max-w-[1440px] mx-auto px-6 md:px-12 relative z-10">
+        <div className="grid lg:grid-cols-2 gap-16 items-start">
+          
+          <div>
+            <span className="text-[#9bcc44] text-[10px] font-black uppercase tracking-[0.25em]">Contacto</span>
+            <h2 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter text-white mt-3 leading-[0.95]">
+              Asistencia para tu <span className="text-[#9bcc44]">viñedo</span>
+            </h2>
+            
+            <div className="mt-12 flex flex-col gap-6">
+              <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-4 bg-[#25d366]/10 border border-[#25d366]/20 p-4 rounded-2xl hover:bg-[#25d366]/20 transition-all">
+                <div className="w-12 h-12 rounded-xl bg-[#25d366] text-white flex items-center justify-center">
+                  <MessageCircle size={24} />
+                </div>
+                <div>
+                  <h4 className="text-white font-bold text-sm">Comunicate con nuestro asistente en persona</h4>
+                  <p className="text-[#aebaa8] text-xs">Hablar directo por WhatsApp</p>
+                </div>
+              </a>
+              
+              <div className="flex gap-4 items-center">
+                <div className="w-12 h-12 rounded-2xl bg-[#18211b] border border-[#2a3a2c] flex items-center justify-center text-[#9bcc44]">
+                  <Mail size={20} />
+                </div>
+                <p className="text-[#aebaa8] text-sm">{EMAIL_INFO}</p>
               </div>
-              <div>
-                <span className="block text-sm font-semibold">{EMAIL_INFO}</span>
-                <span className="block text-[11px] text-[#5d6f5a]">Consultas y presupuestos</span>
-              </div>
-            </a>
-
-            <a href={`mailto:${EMAIL_SECURITY}`}
-              className="flex items-center gap-3 text-[#cdd8c8] hover:text-[#9bcc44] transition-colors group">
-              <div className="w-10 h-10 rounded-xl bg-[#18211b] border border-[#2a3a2c]/60 flex items-center justify-center text-[#9bcc44] group-hover:border-[#9bcc44]/50">
-                <ShieldCheck size={18} />
-              </div>
-              <div>
-                <span className="block text-sm font-semibold">{EMAIL_SECURITY}</span>
-                <span className="block text-[11px] text-[#5d6f5a]">Seguridad</span>
-              </div>
-            </a>
-
-            <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-3 text-[#cdd8c8] hover:text-[#9bcc44] transition-colors group">
-              <div className="w-10 h-10 rounded-xl bg-[#18211b] border border-[#2a3a2c]/60 flex items-center justify-center text-[#9bcc44] group-hover:border-[#9bcc44]/50">
-                <Phone size={18} />
-              </div>
-              <span className="text-sm font-semibold">{TEL_DISPLAY}</span>
-            </a>
-
-            <a href="https://www.puma-code.com" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-3 text-[#cdd8c8] hover:text-[#9bcc44] transition-colors group">
-              <div className="w-10 h-10 rounded-xl bg-[#18211b] border border-[#2a3a2c]/60 flex items-center justify-center text-[#9bcc44] group-hover:border-[#9bcc44]/50">
-                <MapPin size={18} />
-              </div>
-              <span className="text-sm font-semibold">Mendoza, Argentina · puma-code.com</span>
-            </a>
-          </div>
-        </div>
-
-        <div className="bg-[#18211b] border border-[#2a3a2c]/60 rounded-3xl p-8">
-          {sent ? (
-            <div className="h-full flex flex-col items-center justify-center text-center py-10">
-              <CheckCircle2 className="text-[#9bcc44] mb-4" size={48} />
-              <h3 className="text-xl font-black text-white uppercase italic">¡Gracias!</h3>
-              <p className="text-sm text-[#8a9787] mt-2 max-w-xs">
-                Recibimos tu consulta y te respondemos a la brevedad desde {EMAIL_INFO}.
-              </p>
-              <button onClick={() => { setSent(false); setForm({ nombre: '', bodega: '', email: '', telefono: '', mensaje: '' }); }}
-                className="mt-6 text-[#9bcc44] text-xs font-black uppercase tracking-widest">Enviar otra consulta</button>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs p-3 rounded-xl">{error}</div>}
-              {[
-                { k: 'nombre', ph: 'Tu nombre', type: 'text' },
-                { k: 'bodega', ph: 'Bodega / Finca', type: 'text' },
-                { k: 'email', ph: 'Email', type: 'email' },
-                { k: 'telefono', ph: 'Teléfono / WhatsApp', type: 'text' },
-              ].map(f => (
-                <input key={f.k} type={f.type} required placeholder={f.ph}
-                  value={form[f.k]} onChange={(e) => setForm({ ...form, [f.k]: e.target.value })}
-                  className="w-full bg-[#121a14] border-2 border-transparent p-4 rounded-2xl outline-none focus:border-[#9bcc44] text-white text-sm font-semibold placeholder-[#5d6f5a]" />
-              ))}
-              <textarea required placeholder="¿Qué querés resolver? (heladas, riego, cosecha, plagas…)" rows={3}
-                value={form.mensaje} onChange={(e) => setForm({ ...form, mensaje: e.target.value })}
-                className="w-full bg-[#121a14] border-2 border-transparent p-4 rounded-2xl outline-none focus:border-[#9bcc44] text-white text-sm font-semibold placeholder-[#5d6f5a] resize-none" />
-              <button type="submit" disabled={sending}
-                className="w-full bg-[#9bcc44] text-[#0e1512] py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white transition-all flex items-center justify-center gap-2 disabled:opacity-60">
-                {sending ? <><Loader2 size={16} className="animate-spin" /> Enviando…</> : <><Send size={16} /> Enviar consulta</>}
-              </button>
-              <p className="text-center text-[11px] text-[#5d6f5a]">Tu consulta llega directo a {EMAIL_INFO}</p>
-            </form>
-          )}
+          </div>
+
+          <div className="bg-[#18211b]/80 border border-[#2a3a2c]/60 rounded-[2rem] p-8 md:p-10 backdrop-blur-md">
+            {sent ? (
+              <div className="h-[400px] flex flex-col items-center justify-center text-center">
+                <CheckCircle2 size={48} className="text-[#9bcc44] mb-4" />
+                <h3 className="text-white font-black uppercase">¡Consulta enviada!</h3>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <input required placeholder="Nombre" className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent" 
+                    onChange={e => setForm({...form, nombre: e.target.value})} />
+                  <input required placeholder="Bodega" className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
+                    onChange={e => setForm({...form, bodega: e.target.value})} />
+                </div>
+                <input required type="email" placeholder="Email" className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
+                  onChange={e => setForm({...form, email: e.target.value})} />
+                <input required type="tel" placeholder="Teléfono" className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
+                  onChange={e => setForm({...form, telefono: e.target.value})} />
+                <textarea required placeholder="Mensaje" rows={4} className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
+                  onChange={e => setForm({...form, mensaje: e.target.value})} />
+                
+                <button type="submit" disabled={sending}
+                  className="w-full bg-[#9bcc44] text-[#0e1512] py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white transition-all">
+                  {sending ? <Loader2 className="animate-spin mx-auto" /> : "Enviar consulta"}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </section>

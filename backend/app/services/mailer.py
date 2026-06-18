@@ -1,15 +1,15 @@
 """Envío de correo vía Gmail Workspace (SMTP + App Password), igual que puma-code.
 Variables de entorno:
-  GMAIL_USER          = info@puma-code.com  (cuenta que envía)
-  GMAIL_APP_PASSWORD  = App Password de 16 caracteres
-  EMAIL_INFO          = info@puma-code.com  (recibe cotizaciones/contactos)
+  GMAIL_USER          = info@puma-code.com
+  GMAIL_APP_PASSWORD  = kpboccrehlpngdep
+  EMAIL_INFO          = info@puma-code.com
   EMAIL_SECURITY      = security@puma-code.com
 """
 import ssl
 import smtplib
+import certifi  # Necesario para validar certificados SSL en entornos de producción
 from email.message import EmailMessage
 from app.core.config import settings
-
 
 def send_mail(to, subject: str, html: str, reply_to: str | None = None) -> bool:
     """Envía un mail HTML. `to` puede ser str o lista. Devuelve True si se envió."""
@@ -28,12 +28,16 @@ def send_mail(to, subject: str, html: str, reply_to: str | None = None) -> bool:
     msg.add_alternative(html, subtype="html")
 
     try:
-        ctx = ssl.create_default_context()
+        # CORRECCIÓN: Se usa certifi.where() para proveer los certificados de confianza
+        # Esto elimina el error SSL: CERTIFICATE_VERIFY_FAILED
+        ctx = ssl.create_default_context(cafile=certifi.where())
+        
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=20) as server:
             server.login(settings.GMAIL_USER, settings.GMAIL_APP_PASSWORD)
             server.send_message(msg, to_addrs=recipients)
-        print(f"[MAILER] Correo enviado a {recipients}")
+            
+        print(f"[MAILER] Correo enviado exitosamente a {recipients}")
         return True
     except Exception as e:
-        print(f"[MAILER] Error al enviar: {e}")
+        print(f"[MAILER] Error crítico al enviar: {e}")
         return False
