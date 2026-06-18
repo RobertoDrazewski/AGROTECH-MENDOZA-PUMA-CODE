@@ -15,16 +15,23 @@ export default function Contact() {
     setSending(true);
 
     try {
+      // 1. Intentamos el envío por la API de tu backend
       await apiService.enviarContacto(form);
+      // 2. Solo si responde exitosamente, mostramos la pantalla de éxito
       setSent(true);
     } catch (err) {
-      console.error("Error en API, fallback a mailto:", err);
+      console.error("Error crítico en API, ejecutando fallback a mailto:", err);
+      
       const subject = encodeURIComponent(`Consulta AgroTech - ${form.bodega || form.nombre}`);
       const body = encodeURIComponent(
         `Nombre: ${form.nombre}\nBodega: ${form.bodega}\nEmail: ${form.email}\nTel: ${form.telefono}\n\nMensaje:\n${form.mensaje}`
       );
+      
+      // 3. Fallback: abrimos el cliente de correo
       window.location.href = `mailto:${EMAIL_INFO}?subject=${subject}&body=${body}`;
-      setSent(true);
+      
+      // 4. Alertamos al usuario en lugar de mentirle con setSent(true)
+      alert("Hubo un error de conexión con el servidor. Se abrirá tu aplicación de correo para enviar la consulta manualmente.");
     } finally {
       setSending(false);
     }
