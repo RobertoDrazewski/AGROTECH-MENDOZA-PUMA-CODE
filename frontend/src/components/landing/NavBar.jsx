@@ -20,9 +20,9 @@ export default function NavBar() {
   ];
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-[1000] transition-all duration-300 ${scrolled ? 'h-14 bg-[#18211b]/90 backdrop-blur-lg shadow-2xl border-b border-[#2a3a2c]/50' : 'h-16 bg-gradient-to-b from-[#0e1512]/90 to-transparent'}`}>
-      <div className="max-w-[1440px] h-full mx-auto px-4 md:px-12 flex justify-between items-center">
-        {/* Logo */}
+    <nav className={`fixed top-0 left-0 right-0 z-[1000] transition-all duration-300 flex items-center ${scrolled ? 'h-14 bg-[#18211b]/90 backdrop-blur-lg shadow-2xl border-b border-[#2a3a2c]/50' : 'h-16 bg-gradient-to-b from-[#0e1512]/90 to-transparent'}`}>
+      <div className="max-w-[1440px] h-full mx-auto px-4 md:px-12 flex justify-between items-center w-full">
+        {/* Marca Textual */}
         <a href="#top" className="flex items-center gap-2.5">
           <div className="p-1.5 bg-[#9bcc44]/10 rounded-lg text-[#9bcc44] border border-[#9bcc44]/20">
             <Leaf size={18} />

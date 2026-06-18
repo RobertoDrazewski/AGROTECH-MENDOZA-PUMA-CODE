@@ -1,10 +1,11 @@
 import React from 'react';
 import { ArrowRight, Activity, CloudSnow, Droplets, Grape } from 'lucide-react';
 import heroBg from '../../assets/hero.png';
+import logo from '../../assets/agrotech-logo.png';
 
 export default function Hero() {
   return (
-    <header id="top" className="relative min-h-screen flex items-center pt-24 pb-16 overflow-hidden">
+    <header id="top" className="relative min-h-screen flex items-center pt-36 md:pt-44 pb-16 overflow-hidden">
       {/* Fondo */}
       <div className="absolute inset-0 -z-10"
         style={{
@@ -14,8 +15,15 @@ export default function Hero() {
       <div className="absolute top-0 left-0 w-[40rem] h-[40rem] bg-[#9bcc44]/10 blur-[160px] rounded-full -z-10" />
 
       <div className="max-w-[1440px] mx-auto px-6 md:px-12 grid lg:grid-cols-2 gap-12 items-center w-full">
-        {/* Texto */}
-        <div className="animate-fade-up">
+        {/* Columna de Texto e Imagen */}
+        <div className="animate-fade-up flex flex-col items-start">
+          {/* Logo incorporado arriba a la izquierda - Tamaño duplicado */}
+          <img 
+            src={logo} 
+            alt="AgroTech Mendoza Logo" 
+            className="h-64 md:h-[22rem] w-auto object-contain mb-10" // h-64 (256px) / md:h-[22rem] (352px)
+          />
+
           <span className="inline-flex items-center gap-2 bg-[#9bcc44]/10 border border-[#9bcc44]/25 text-[#9bcc44] text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full mb-6">
             <Activity size={12} /> Agricultura 4.0 · IoT + IA · Mendoza
           </span>
