@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Play } from 'lucide-react';
-import promoVideo from '../../assets/gemini_generated_video_341DC080.mp4';
+import promoVideo from '../../assets/gemini_generated_video_341DC080.MP4';
 
 export default function VideoSection() {
   const [playing, setPlaying] = useState(false);
