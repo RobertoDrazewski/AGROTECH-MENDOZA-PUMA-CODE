@@ -1,43 +1,47 @@
-import ssl
-import smtplib
-import certifi
-from email.message import EmailMessage
+import httpx
 from app.core.config import settings
 
 def send_mail(to, subject: str, html: str, reply_to: str | None = None) -> bool:
+    """Envía un mail HTML usando API REST (puerto 443) para evadir bloqueos SMTP de Render."""
+    
+    # settings.RESEND_API_KEY debe estar en tus variables de entorno
+    if not hasattr(settings, 'RESEND_API_KEY') or not settings.RESEND_API_KEY:
+        print("[MAILER] Falta RESEND_API_KEY; no se enviará el correo.")
+        return False
+
     recipients = [to] if isinstance(to, str) else list(to)
-    msg = EmailMessage()
-    msg["From"] = f"AgroTech Mendoza <{settings.GMAIL_USER}>"
-    msg["To"] = ", ".join(recipients)
-    msg["Subject"] = subject
+    
+    payload = {
+        "from": f"AgroTech Mendoza <{settings.EMAIL_INFO}>",
+        "to": recipients,
+        "subject": subject,
+        "html": html,
+    }
+    
     if reply_to:
-        msg["Reply-To"] = reply_to
-    msg.set_content("Tu cliente de correo no soporta HTML.")
-    msg.add_alternative(html, subtype="html")
+        payload["reply_to"] = reply_to
 
-    # Intentar primero SSL (465) y fallback a TLS (587)
-    configs = [
-        {"host": "smtp.gmail.com", "port": 465, "ssl": True},
-        {"host": "smtp.gmail.com", "port": 587, "ssl": False}
-    ]
+    headers = {
+        "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
-    for cfg in configs:
-        try:
-            if cfg["ssl"]:
-                ctx = ssl.create_default_context(cafile=certifi.where())
-                with smtplib.SMTP_SSL(cfg["host"], cfg["port"], context=ctx, timeout=10) as server:
-                    server.login(settings.GMAIL_USER, settings.GMAIL_APP_PASSWORD)
-                    server.send_message(msg, to_addrs=recipients)
-            else:
-                with smtplib.SMTP(cfg["host"], cfg["port"], timeout=10) as server:
-                    server.starttls(context=ssl.create_default_context(cafile=certifi.where()))
-                    server.login(settings.GMAIL_USER, settings.GMAIL_APP_PASSWORD)
-                    server.send_message(msg, to_addrs=recipients)
-            
-            print(f"[MAILER] Correo enviado exitosamente vía puerto {cfg['port']}")
+    try:
+        # Petición HTTPS (puerto 443) - Render no bloquea esto
+        response = httpx.post(
+            "https://api.resend.com/emails",
+            json=payload,
+            headers=headers,
+            timeout=10.0
+        )
+        
+        if response.status_code == 200:
+            print(f"[MAILER] Correo enviado exitosamente vía API REST a {recipients}")
             return True
-        except Exception as e:
-            print(f"[MAILER] Falló intento por puerto {cfg['port']}: {e}")
-            continue
-
-    return False
+        else:
+            print(f"[MAILER] Error de la API de correo: {response.status_code} - {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"[MAILER] Error crítico de red al enviar por API REST: {e}")
+        return False
