@@ -36,7 +36,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
     OPENAI_MODEL: str = Field(default="gpt-4o-mini", validation_alias="OPENAI_MODEL")
 
-    # Correo (Gmail Workspace / App Password) — mismo sistema que puma-code
+    # Correo (Resend API HTTP / Fallbacks)
+    RESEND_API_KEY: str | None = Field(default=None, validation_alias="RESEND_API_KEY")
     GMAIL_USER: str = Field(default="info@puma-code.com", validation_alias="GMAIL_USER")
     GMAIL_APP_PASSWORD: str | None = Field(default=None, validation_alias="GMAIL_APP_PASSWORD")
     EMAIL_INFO: str = Field(default="info@puma-code.com", validation_alias="EMAIL_INFO")
