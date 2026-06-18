@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Play } from 'lucide-react';
+
+// IMPORTANTE: Asegúrate de que el archivo en la carpeta 'assets' se llame exactamente igual
 import promoVideo from '../../assets/gemini_generated_video_341DC080.mp4';
 
 export default function VideoSection() {
@@ -20,7 +22,9 @@ export default function VideoSection() {
   return (
     <section id="video" className="max-w-[1100px] mx-auto px-6 md:px-12 py-24">
       <div className="text-center mb-10 max-w-2xl mx-auto">
-        <span className="text-[#9bcc44] text-[10px] font-black uppercase tracking-[0.25em]">Conocé el proyecto</span>
+        <span className="text-[#9bcc44] text-[10px] font-black uppercase tracking-[0.25em]">
+          Conocé el proyecto
+        </span>
         <h2 className="text-3xl md:text-4xl font-black uppercase italic tracking-tight text-white mt-3">
           AgroTech Mendoza en <span className="text-[#9bcc44]">2 minutos</span>
         </h2>
