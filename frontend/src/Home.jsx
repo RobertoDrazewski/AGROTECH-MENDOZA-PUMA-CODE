@@ -1,10 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import NavBar from './components/landing/NavBar';
 import Footer from './components/landing/Footer';
 import ChatIA from './components/landing/ChatIA';
 
-// Inicializa el script oficial y el contenedor oculto requerido
+// Importamos los componentes para el modo Scroll Móvil
+import Hero from './components/landing/Hero';
+import Services from './components/landing/Services';
+import Industries from './components/landing/Industries';
+import VideoSection from './components/landing/VideoSection';
+import LiveDemo from './components/landing/LiveDemo';
+import Contact from './components/landing/Contact';
+
 function injectGoogleTranslate() {
   if (document.getElementById('gt-script')) return;
 
@@ -27,8 +34,19 @@ function injectGoogleTranslate() {
 }
 
 export default function Home() {
+  const [isMobile, setIsMobile] = useState(false);
+
   useEffect(() => {
     injectGoogleTranslate();
+
+    // Detectar tamaño de pantalla para activar el scroll continuo en móvil
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024); // 1024px es el breakpoint 'lg' de Tailwind
+    };
+
+    handleResize(); // Ejecución inicial
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
@@ -36,7 +54,20 @@ export default function Home() {
       <NavBar />
       
       <main>
-        <Outlet />
+        {isMobile ? (
+          /* En móvil, se apilan todas las secciones con IDs para poder scrollear de corrido */
+          <div className="flex flex-col">
+            <div id="inicio"><Hero /></div>
+            <div id="servicios"><Services /></div>
+            <div id="industrias"><Industries /></div>
+            <div id="video"><VideoSection /></div>
+            <div id="demo"><LiveDemo /></div>
+            <div id="contacto"><Contact /></div>
+          </div>
+        ) : (
+          /* En Desktop, se mantiene tu hermosa estructura por páginas independientes */
+          <Outlet />
+        )}
       </main>
       
       <Footer />
