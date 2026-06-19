@@ -18,16 +18,47 @@ class VinedoSimulator:
             "Cuartel_Cabernet_2":   {"brix": 20.5, "ph": 3.10, "humedad_suelo": 28.5},
             "Cuartel_Chardonnay_3": {"brix": 19.8, "ph": 3.05, "humedad_suelo": 35.0},
             "Cuartel_Syrah_4":      {"brix": 20.9, "ph": 3.12, "humedad_suelo": 26.0},
+            "Cuartel_Bonarda_5":    {"brix": 20.2, "ph": 3.08, "humedad_suelo": 30.0},
         }
-        # Registrar metadatos geográficos (coordenadas Luján de Cuyo)
+        
+        # Registrar metadatos geográficos originales en memoria
         meta = {
-            "Cuartel_Malbec_1":     ("Malbec", 4.2, -33.0386, -68.8920),
-            "Cuartel_Cabernet_2":   ("Cabernet Sauvignon", 3.1, -33.0401, -68.8895),
-            "Cuartel_Chardonnay_3": ("Chardonnay", 2.4, -33.0372, -68.8951),
-            "Cuartel_Syrah_4":      ("Syrah", 3.8, -33.0418, -68.8872),
+            "Cuartel_Malbec_1":     ("Malbec", 4.2, -32.958598, -68.745336, "Maipú"),
+            "Cuartel_Cabernet_2":   ("Cabernet Sauvignon", 3.1, -33.162103, -68.915638, "Luján de Cuyo"),
+            "Cuartel_Chardonnay_3": ("Chardonnay", 2.4, -33.160387, -68.915273, "Agrelo"),
+            "Cuartel_Syrah_4":      ("Syrah", 3.8, -33.570331, -69.024776, "Tunuyán"),
+            "Cuartel_Bonarda_5":    ("Bonarda", 3.5, -33.350075, -69.174682, "Tupungato"),
         }
-        for vid, (var, ha, lat, lon) in meta.items():
-            db_vinedos.register_cuartel(vid, var, ha, lat, lon)
+        
+        for vid, (var, ha, lat, lon, zona) in meta.items():
+            db_vinedos.register_cuartel(vid, var, ha, lat, lon, zona)
+
+        # Inyectar las geocercas usando el formato nativo exacto esperado por el sistema [{lat, lon}]
+        geocercas = {
+            "Cuartel_Malbec_1": [
+                {"lat": -32.957419, "lon": -68.745316}, {"lat": -32.957729, "lon": -68.744339}, 
+                {"lat": -32.959332, "lon": -68.745037}, {"lat": -32.959224, "lon": -68.745385}, 
+                {"lat": -32.960020, "lon": -68.745793}, {"lat": -32.959795, "lon": -68.746501}
+            ],
+            "Cuartel_Cabernet_2": [
+                {"lat": -33.160630, "lon": -68.919275}, {"lat": -33.162345, "lon": -68.911314}, 
+                {"lat": -33.164124, "lon": -68.911475}, {"lat": -33.162372, "lon": -68.919704}
+            ],
+            "Cuartel_Chardonnay_3": [
+                {"lat": -33.158671, "lon": -68.917977}, {"lat": -33.160127, "lon": -68.911164}, 
+                {"lat": -33.162210, "lon": -68.911271}, {"lat": -33.160638, "lon": -68.918556}
+            ],
+            "Cuartel_Syrah_4": [
+                {"lat": -33.568776, "lon": -69.025420}, {"lat": -33.568096, "lon": -69.022727}, 
+                {"lat": -33.572816, "lon": -69.024712}, {"lat": -33.572172, "lon": -69.027008}
+            ],
+            "Cuartel_Bonarda_5": [
+                {"lat": -33.349958, "lon": -69.176238}, {"lat": -33.349304, "lon": -69.175809}, 
+                {"lat": -33.350156, "lon": -69.173040}, {"lat": -33.351088, "lon": -69.173266}
+            ]
+        }
+        for vid, puntos in geocercas.items():
+            db_vinedos.set_geocerca(vid, puntos)
 
         self.current_simulated_time = datetime.now()
 
@@ -35,7 +66,6 @@ class VinedoSimulator:
         temp_base, amplitud = 16.0, 9.0
         efecto_hora = math.sin((hora - 9) * math.pi / 12)
         temp_aire = temp_base + amplitud * efecto_hora + random.uniform(-1.0, 1.0)
-        # Inversión térmica nocturna: simula riesgo de helada de madrugada
         if 2 <= hora <= 6:
             temp_aire = max(-2.5, temp_aire - 10.0)
         humedad_aire = max(15.0, min(95.0, 65.0 - (efecto_hora * 25.0) + random.uniform(-3.0, 3.0)))
@@ -51,10 +81,8 @@ class VinedoSimulator:
         for vinedo_id, estado in self.cuarteles.items():
             evaporacion = max(0.05, temp_aire * 0.015) if temp_aire > 0 else 0.01
             estado["humedad_suelo"] = max(12.0, estado["humedad_suelo"] - evaporacion + random.uniform(-0.1, 0.1))
-            # Pulso de riego automático
             if estado["humedad_suelo"] < 18.0:
                 estado["humedad_suelo"] += 12.0
-            # Maduración biológica de la uva
             if temp_aire > 10.0:
                 factor = (temp_aire - 10.0) * 0.001
                 estado["brix"] += factor + random.uniform(0.001, 0.005)

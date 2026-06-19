@@ -12,6 +12,7 @@ api.interceptors.request.use((cfg) => {
 const apiService = {
   getVinedos:           async () => (await api.get('/vinedos')).data,
   getCuarteles:         async () => (await api.get('/telemetria/cuarteles')).data,
+  guardarGeocerca:      async (id, puntos) => (await api.post(`/telemetria/cuarteles/${id}/geocerca`, puntos)).data,
   getTelemetria:        async (id, limit = 24) => (await api.get(`/telemetria/${id}?limit=${limit}`)).data,
   getPrediccionHelada:  async (id) => (await api.get(`/analisis/helada/${id}`)).data,
   getAnalisisCosecha:   async (id) => (await api.get(`/analisis/cosecha/${id}`)).data,

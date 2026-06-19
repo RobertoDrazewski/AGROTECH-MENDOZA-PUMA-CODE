@@ -17,8 +17,18 @@ def lista_vinedos_legacy():
 
 @router.get("/cuarteles")
 def cuarteles_detallados():
-    """Lista de cuarteles con metadatos (variedad, hectáreas, coordenadas)."""
+    """Lista de cuarteles con metadatos (variedad, hectáreas, coordenadas, geocerca)."""
     return [db_vinedos.get_meta(v) for v in db_vinedos.get_all_vinedos_ids()]
+
+
+@router.post("/cuarteles/{vinedo_id}/geocerca")
+def guardar_geocerca(vinedo_id: str, puntos: list[dict]):
+    """Guarda el contorno real del cuartel: lista de puntos [{lat, lon}, ...]
+    marcados a mano sobre el mapa satelital, o caminados con GPS en el campo."""
+    if len(puntos) < 3:
+        raise HTTPException(400, "La geocerca necesita al menos 3 puntos.")
+    db_vinedos.set_geocerca(vinedo_id, puntos)
+    return {"status": "ok", "vinedo_id": vinedo_id, "puntos": len(puntos)}
 
 
 @router.post("/ingest")

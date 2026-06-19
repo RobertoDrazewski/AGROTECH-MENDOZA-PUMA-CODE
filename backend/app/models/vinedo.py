@@ -12,14 +12,25 @@ class VinedoStorage:
         self.meta: Dict[str, Dict[str, Any]] = {}
 
     def register_cuartel(self, vinedo_id: str, variedad: str, hectareas: float,
-                         lat: float, lon: float):
+                         lat: float, lon: float, zona: str = ""):
+        # No pisar una geocerca ya guardada si el cuartel se re-registra
+        existente = self.meta.get(vinedo_id, {})
         self.meta[vinedo_id] = {
             "vinedo_id": vinedo_id,
             "variedad": variedad,
             "hectareas": hectareas,
             "lat": lat,
             "lon": lon,
+            "zona": zona,
+            "geocerca": existente.get("geocerca", []),
         }
+
+    def set_geocerca(self, vinedo_id: str, puntos: list):
+        """Guarda el polígono real del cuartel: lista de {lat, lon} marcados
+        a mano sobre el satélite, o leídos por GPS en el campo."""
+        if vinedo_id not in self.meta:
+            self.meta[vinedo_id] = {"vinedo_id": vinedo_id}
+        self.meta[vinedo_id]["geocerca"] = puntos
 
     def save_telemetry(self, telemetry_data: Dict[str, Any]) -> Dict[str, Any]:
         vinedo_id = telemetry_data["vinedo_id"]

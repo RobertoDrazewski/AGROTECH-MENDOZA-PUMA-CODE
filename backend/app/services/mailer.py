@@ -1,7 +1,7 @@
 """Envío de correo vía Resend API (HTTP REST).
 Reemplaza la configuración SMTP para evadir el bloqueo de puertos de Render.
 Variables de entorno requeridas:
-  RESEND_API_KEY      = re_AtU9Sx1D_9dgmPgmW6meX7RYC4g6n3k7m
+  RESEND_API_KEY      = (Configurada en el archivo .env)
   EMAIL_INFO          = info@puma-code.com
 """
 import json
