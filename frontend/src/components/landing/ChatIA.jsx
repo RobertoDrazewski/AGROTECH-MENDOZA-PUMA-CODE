@@ -9,7 +9,7 @@ export default function ChatIA() {
   const [mode, setMode] = useState('chat'); // 'chat' | 'budget'
   const [budget, setBudget] = useState({ name: '', email: '', bodega: '' });
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: '¡Hola! Soy el asesor de AgroTech Mendoza. Contame sobre tu viñedo (hectáreas, qué querés resolver: heladas, riego, cosecha, plagas) y cuando quieras te armo un presupuesto a medida.' },
+    { role: 'assistant', content: '¡Hola! Soy el asesor de AgroTech Mendoza. Contame sobre tu viñedo (hectáreas, qué querés resolver: heladas, riego, cosecha, plagas). Cuando quieras tocá "Pedir presupuesto", dejá tus datos y un asesor del área de ventas se comunica con vos a la brevedad.' },
   ]);
   const endRef = useRef(null);
 
@@ -34,10 +34,10 @@ export default function ChatIA() {
     const historyForApi = messages.map(m => ({ role: m.role, content: m.content }));
     try {
       const res = await apiService.pedirPresupuesto(historyForApi, budget);
-      const msg = res.resumen_cliente || 'Te preparamos el presupuesto y te lo enviamos por mail. ¡Gracias!';
+      const msg = res.resumen_cliente || `¡Gracias por enviarnos la solicitud, ${budget.name}! En breve una persona del área de ventas estará comunicándose con usted.`;
       setMessages([...messages, { role: 'assistant', content: msg }]);
     } catch (e) {
-      setMessages([...messages, { role: 'assistant', content: 'No pude generar el presupuesto en este momento. Dejanos tu consulta en el formulario de contacto o escribinos a info@puma-code.com.' }]);
+      setMessages([...messages, { role: 'assistant', content: 'No pudimos registrar tu solicitud en este momento. Por favor escribinos a info@puma-code.com y te respondemos enseguida.' }]);
     } finally {
       setLoading(false); setMode('chat');
       setBudget({ name: '', email: '', bodega: '' });
@@ -97,9 +97,9 @@ export default function ChatIA() {
                 className="w-full bg-[#121a14] border border-[#2a3a2c]/60 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-[#9bcc44] placeholder-[#5d6f5a]" />
               <button onClick={enviarPresupuesto} disabled={loading}
                 className="w-full bg-[#9bcc44] text-[#0e1512] py-3 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-white transition-all flex items-center justify-center gap-2 disabled:opacity-60">
-                {loading ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />} Generar presupuesto
+                {loading ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />} Enviar solicitud
               </button>
-              <p className="text-[10px] text-[#5d6f5a] text-center">Calculamos el dólar del día y te lo enviamos a tu mail.</p>
+              <p className="text-[10px] text-[#5d6f5a] text-center">Un asesor del área de ventas se comunica con vos a la brevedad.</p>
             </div>
           ) : (
             <>

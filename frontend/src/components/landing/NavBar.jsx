@@ -73,8 +73,32 @@ export default function NavBar() {
     <>
       <style>{`
         html { scroll-behavior: smooth; } /* Deslizamiento suave nativo */
-        .goog-te-banner-frame, .goog-te-balloon-frame, .skiptranslate { display: none !important; }
-        body { top: 0 !important; }
+
+        /* === Ocultar por completo la UI del traductor de Google (barra, banner,
+           globo, tooltip e iframes) para que no parpadee ni empuje el layout,
+           especialmente en móvil === */
+        .goog-te-banner-frame,
+        .goog-te-banner-frame.skiptranslate,
+        .goog-te-balloon-frame,
+        .goog-te-ftab,
+        .goog-te-menu-frame,
+        .goog-te-spinner-pos,
+        #goog-gt-tt,
+        .goog-tooltip,
+        .goog-tooltip:hover,
+        .goog-text-highlight,
+        iframe.skiptranslate,
+        .skiptranslate { display: none !important; visibility: hidden !important; }
+
+        #google_translate_element { display: none !important; }
+
+        /* Google fuerza top en el body al mostrar su barra; lo anulamos siempre */
+        body { top: 0 !important; position: static !important; }
+        body > .skiptranslate { display: none !important; }
+
+        /* Evita el subrayado/resaltado que Google agrega al texto traducido */
+        font[style] { background: none !important; box-shadow: none !important; }
+
         .lang-container { display: flex; align-items: center; gap: 4px; transition: opacity 0.3s ease, transform 0.3s ease; }
         .lang-container.hiding { opacity: 0; transform: translateY(-4px); }
         .flag-btn { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 2px 4px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 3px; }

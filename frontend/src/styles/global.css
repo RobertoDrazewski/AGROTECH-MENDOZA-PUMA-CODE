@@ -63,3 +63,28 @@ select option { background-color: #121a14 !important; color: #e8ede6 !important;
                  drop-shadow(0 0 30px rgba(0,230,118,0.27)); }
 }
 .logo-img { animation: rainbowGlow 4s ease-in-out infinite; }
+/* ====================================================================
+   Google Translate — ocultar toda su UI desde el primer paint.
+   (Mismas reglas que en NavBar, pero cargadas con el CSS global para
+   evitar el parpadeo/empuje de layout en móvil antes de montar React.)
+   ==================================================================== */
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+.goog-te-balloon-frame,
+.goog-te-ftab,
+.goog-te-menu-frame,
+.goog-te-spinner-pos,
+#goog-gt-tt,
+.goog-tooltip,
+.goog-tooltip:hover,
+.goog-text-highlight,
+iframe.skiptranslate,
+.skiptranslate { display: none !important; visibility: hidden !important; }
+
+#google_translate_element { display: none !important; }
+
+body { top: 0 !important; position: static !important; }
+body > .skiptranslate { display: none !important; }
+
+/* Quita el resaltado de fondo que Google aplica al texto traducido */
+font[style] { background: none !important; box-shadow: none !important; }
