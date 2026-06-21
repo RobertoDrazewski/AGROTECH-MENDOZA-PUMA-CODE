@@ -1,72 +1,249 @@
-# AgroTech Mendoza · by puma-code.com 🍇
+# AgroTech Mendoza
+### Telemetría IoT, inteligencia artificial y datos satelitales para la viticultura de precisión
 
-Plataforma de **agricultura de precisión para viñedos y bodegas**: telemetría IoT, dashboards con KPIs, IA (predicción de cosecha, heladas y estrés hídrico), pronóstico agroclimático (heladas/granizo/golpe de calor/Zonda), **riego inteligente** y **monitoreo fitosanitario con IA**.
+**Por Puma-Code.com · Mendoza, Argentina**
 
-Desarrollado por **Puma-Code.com** (CEO: Roberto) · Mendoza, Argentina.
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=flat&logo=scikit-learn&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=flat&logo=mysql&logoColor=white)
+![React](https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat&logo=tailwindcss&logoColor=white)
+![ESP32](https://img.shields.io/badge/ESP32--S3-E7352C?style=flat&logo=espressif&logoColor=white)
+![NASA POWER](https://img.shields.io/badge/NASA_POWER-0B3D91?style=flat&logo=nasa&logoColor=white)
+![Railway](https://img.shields.io/badge/Railway-0B0D0E?style=flat&logo=railway&logoColor=white)
 
 ---
 
-## 🗂 Estructura
+## Qué es
+
+AgroTech Mendoza es una plataforma que combina **sensores de campo de bajo costo**,
+**datos climáticos satelitales** y un **modelo de machine learning** para anticipar
+los dos riesgos que más afectan la rentabilidad de un viñedo: las **heladas** y el
+**estrés hídrico**. Todo se centraliza en un panel web con alertas en tiempo real.
+
+El sistema fue diseñado para las condiciones específicas de Mendoza —clima semiárido,
+amplitud térmica marcada y heladas tardías de primavera— y validado con datos reales
+de las cinco zonas vitivinícolas principales: Maipú, Luján de Cuyo, Agrelo, Tunuyán
+y Tupungato.
+
+---
+
+## Las tres capas del sistema
+
+**1. Sensado de campo (hardware propio)**
+Nodos sensores solares construidos sobre la placa Heltec Wireless Tracker (ESP32-S3 +
+LoRa + GPS). Cada nodo mide temperatura y humedad de aire, presión atmosférica,
+temperatura y humedad de suelo, y reporta su posición por GPS. Autónomos, alimentados
+por panel solar, pensados para vivir a la intemperie en la espaldera. El diseño,
+despiece y manual de construcción son íntegramente de Puma-Code (costo de prototipo:
+USD 234).
+
+**2. Base de datos climática real (satelital)**
+Cada cuartel se inicializa con el **histórico climático real de NASA POWER** para sus
+coordenadas exactas: dos años de datos horarios (más de 17.500 registros por cuartel,
+87.720 en total). Sobre esa base real, el sistema proyecta la evolución en vivo. Esto
+significa que el modelo no aprende de datos inventados, sino del clima efectivamente
+ocurrido en cada parcela.
+
+**3. Inteligencia artificial**
+Dos motores complementarios trabajan sobre esos datos:
+
+- **Detección de anomalías climáticas** — un modelo *Isolation Forest* (scikit-learn),
+  entrenado de forma no supervisada sobre el histórico real. Aprende cuál es el patrón
+  climático normal de cada zona y marca como anomalía las condiciones que se desvían:
+  típicamente, las heladas y los descensos térmicos bruscos.
+
+- **Predicción de riesgo de helada** — un motor híbrido que combina **física**
+  (cálculo del punto de rocío por la ecuación de Magnus-Tetens y la tasa de
+  enfriamiento) con la **señal del modelo de ML**. La física explica *por qué* hay
+  riesgo; el Isolation Forest confirma si el patrón es efectivamente anómalo. Cuando
+  ambos coinciden, la alerta sube de nivel.
+
+---
+
+## Resultado del modelo (datos reales)
+
+Entrenado sobre las 87.720 lecturas horarias reales de NASA POWER para los cinco
+cuarteles:
+
+| Métrica | Valor |
+|---|---|
+| Muestras de entrenamiento | 87.720 (2 años, 5 zonas) |
+| Anomalías detectadas | 5.264 (6,0%) |
+| Anomalías que son heladas (≤ 2 °C) | 40% |
+
+El dato relevante: **el modelo identificó las heladas sin que se le indicara qué era
+una helada**. Aprendió a reconocerlas como desviación del patrón normal, de forma
+completamente no supervisada. Esto valida que el enfoque de detección de anomalías es
+aplicable a la prevención de daño por frío en viñedos.
+
+---
+
+## Por qué importa para una bodega
+
+- **Menos pérdidas por helada**: aviso temprano para activar defensa pasiva
+  (quemadores, aspersión, riego) antes de que la temperatura cruce el umbral de daño.
+- **Riego más eficiente**: seguimiento de humedad de suelo para regar cuando hace
+  falta, ahorrando agua y energía.
+- **Decisiones con datos reales**: cada cuartel tiene su propio historial climático y
+  su propia línea de base, no un promedio genérico.
+- **Escalable**: el mismo nodo se replica cuartel por cuartel; el panel los centraliza
+  a todos.
+
+---
+
+## Estado de desarrollo
+
+- ✅ Plataforma web y panel de control operativos en producción.
+- ✅ Integración de histórico climático real de NASA POWER por cuartel.
+- ✅ Modelo de ML (Isolation Forest) entrenado y validado con datos reales.
+- ✅ Motor híbrido de predicción de heladas (física + ML).
+- ✅ Hardware del nodo sensor diseñado, documentado y en fase de prototipo de campo.
+- 🔄 Despliegue del primer nodo físico en viñedo (en curso).
+
+---
+
+## Stack técnico
+
+Backend FastAPI (Python) · MySQL · scikit-learn · datos satelitales NASA POWER ·
+frontend React + Vite + Tailwind · hardware ESP32-S3 / LoRa / GPS · desplegado en
+Railway.
+
+---
+
+# Guía para desarrolladores
+
+## Estructura del proyecto
+
 ```
-agrotech-mendoza/
-├── backend/      API FastAPI + simulador + IA + auth (Python)
-├── frontend/     Landing comercial + panel admin (React + Vite)
-├── hardware/     BOM, firmware ESP32/LoRa, diagrama y informe eléctrico
-└── docs/         Informe comercial/ingeniería (PDF)
+backend/                  API FastAPI
+  main.py                 entrypoint (uvicorn main:app)
+  app/
+    core/config.py        configuración y variables de entorno
+    api/endpoints/        rutas: telemetría, predicciones, riego, etc.
+    ml_models/
+      anomaly_detector.py Isolation Forest (entrenamiento + inferencia)
+      frost_isoforest.pkl modelo entrenado (versionado en el repo)
+      frost_predictor.py  predictor físico de heladas (punto de rocío)
+      harvest_optimizer.py curva de maduración Brix/pH
+    simulator/            generador de telemetría en vivo
+    db/
+      nasa_loader.py      descarga del histórico de NASA POWER
+      database.py         conexión MySQL (SQLAlchemy)
+  scripts/fetch_nasa_power.py   script de descarga de datos NASA
+  data/                   CSV histórico + caché NASA
+frontend/                 React + Vite + Tailwind
 ```
 
-## 🚀 Puesta en marcha (desarrollo)
+## Requisitos
 
-### 1) Backend (FastAPI)
+- Python 3.10+
+- Node.js 18+
+- MySQL (o una instancia en Railway)
+
+## Backend — puesta en marcha
+
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+source venv/bin/activate          # en Mac/Linux
 pip install -r requirements.txt
-cp .env.example .env            # opcional: editar claves
+```
+
+Creá un archivo `.env` en `backend/` con al menos:
+
+```env
+DATABASE_URL=mysql+pymysql://usuario:password@host:puerto/basededatos
+SECRET_KEY=una_clave_larga_y_secreta
+ENV=development
+# Opcionales (según funciones que uses):
+OPENAI_API_KEY=...
+ROOT_ADMIN_USER=...
+ROOT_ADMIN_PASSWORD=...
+```
+
+Levantá el servidor:
+
+```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
-- API: http://127.0.0.1:8000  ·  Docs interactivos: http://127.0.0.1:8000/docs
-- El **simulador** arranca solo y genera telemetría de 4 cuarteles (Malbec, Cabernet, Chardonnay, Syrah).
 
-### 2) Frontend (React)
+Documentación interactiva de la API en `http://localhost:8000/docs`.
+
+### Qué pasa al arrancar
+
+1. Sincroniza los cuarteles en MySQL.
+2. Siembra el histórico real de NASA **en segundo plano** (no bloquea el arranque).
+   La siembra es **idempotente**: solo ocurre la primera vez; en reinicios no
+   duplica datos. Si NASA no responde, el sistema usa un historial sintético y
+   sigue funcionando.
+3. Arranca el simulador, que continúa la serie en vivo desde el último dato real.
+
+## Modelo de Machine Learning
+
+El repo incluye un modelo ya entrenado (`frost_isoforest.pkl`). Para regenerarlo
+con datos reales actualizados de NASA POWER para las coordenadas de los cuarteles:
+
+```bash
+cd backend
+# 1. Descargar el histórico real (crea data/clima_historico_mendoza.csv)
+python scripts/fetch_nasa_power.py --start 2023-01-01 --end 2024-12-31
+# 2. Entrenar y serializar el modelo (imprime las métricas)
+python -m app.ml_models.anomaly_detector --train
+```
+
+Si NASA no está disponible, agregá `--synthetic` al primer comando para usar un
+respaldo realista.
+
+### Endpoints de IA
+
+- `GET /api/v1/analisis/anomalia/{vinedo_id}` — score de anomalía climática
+  (Isolation Forest puro).
+- `GET /api/v1/analisis/helada/{vinedo_id}` — riesgo de helada (física +
+  Isolation Forest combinados).
+- `POST /api/v1/telemetria/ingest` — ingreso de telemetría del nodo físico
+  (Heltec). Auto-registra el cuartel a partir del GPS la primera vez.
+
+## Frontend — puesta en marcha
+
 ```bash
 cd frontend
 npm install
-cp .env.example .env            # VITE_API_URL=http://127.0.0.1:8000
 npm run dev
 ```
-- Sitio: http://localhost:5173
-- Panel bodega: http://localhost:5173/login
 
-## 🔐 Acceso al panel
-- Usuario demo: **roberto** · Contraseña: **agrotech2026** (definidos en `backend/.env`).
-- Para invitar operadores: pestaña **Staff & Accesos** → genera un enlace `/setup-password` para que cada uno cree su contraseña.
+Para apuntar el frontend a un backend local, creá `frontend/.env`:
 
-## 🧠 Funcionalidades
-| Módulo | Endpoint | Descripción |
-|--------|----------|-------------|
-| Telemetría | `GET /api/v1/telemetria/{id}` | Lecturas por cuartel |
-| Heladas (IA) | `GET /api/v1/analisis/helada/{id}` | Punto de rocío + tendencia |
-| Cosecha (IA) | `GET /api/v1/analisis/cosecha/{id}` | Ventana óptima Brix/pH |
-| Histórico | `GET /api/v1/analisis/historico/{id}?periodo=anual\|mensual` | Series para reportes |
-| Clima | `GET /api/v1/clima/{id}` | Pronóstico 5 días + riesgos |
-| Riego | `GET/POST /api/v1/riego/{id}` | Estado y comandos |
-| Fitosanitario (IA) | `GET /api/v1/fitosanitario/{id}` | Plagas detectadas + confianza |
-| Chat comercial | `POST /api/v1/chat` | Asesor de ventas para bodegas |
-| Ingesta hardware | `POST /api/v1/telemetria/ingest` | Datos reales del ESP32/LoRaWAN |
+```env
+VITE_API_URL=http://localhost:8000
+```
 
-## 🔌 Conectar hardware real
-Cuando instales los nodos, el gateway hace `POST /api/v1/telemetria/ingest` con el mismo JSON que produce el simulador (claves `temp_aire`, `humedad_aire`, `presion_atm`, `humedad_suelo`, ...). Ver `hardware/`.
+Sin esa variable, el frontend usa la URL de producción por defecto.
 
-## 🔑 Integraciones opcionales (sin obligación)
-- **OpenWeather**: definí `OPENWEATHER_API_KEY` en `.env` para pronóstico real (si no, usa uno simulado).
-- **OpenAI**: definí `OPENAI_API_KEY` y descomentá `openai` en `requirements.txt` para que el chat use IA generativa (si no, usa un motor de reglas que ya vende el producto).
+Build de producción:
 
-## ✏️ Personalizar antes de publicar
-- **WhatsApp / Email**: en `frontend/src/components/landing/Contact.jsx` (`WHATSAPP`, `EMAIL`).
-- **Video**: en `frontend/src/components/landing/VideoSection.jsx` (`VIDEO_URL`) o subí `frontend/public/promo.mp4`.
-- **Clave admin**: cambiá `ROOT_ADMIN_PASSWORD` y `SECRET_KEY` en `backend/.env`.
+```bash
+npm run build       # genera dist/
+npm run preview     # previsualiza el build
+```
+
+## Despliegue (Railway)
+
+El backend se despliega con el `Procfile` incluido:
+
+```
+web: python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+Configurá las variables de entorno (`DATABASE_URL`, `SECRET_KEY`, etc.) en el
+panel de Railway. El push a la rama `main` dispara el redeploy automático.
+
+> **Nota:** `scikit-learn` es una dependencia pesada; el primer build puede
+> tardar. Verificá que el plan de Railway tenga RAM suficiente.
 
 ---
-© Puma-Code.com · AgroTech Mendoza — Agricultura 4.0
+
+*AgroTech Mendoza es un desarrollo de Puma-Code.com. Las métricas del modelo son
+reproducibles a partir del histórico de NASA POWER incluido en el proyecto.*
