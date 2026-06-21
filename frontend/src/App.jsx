@@ -40,7 +40,7 @@ export default function App() {
   );
 
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         {/* Rutas Públicas de Ventanas Independientes */}
         <Route path="/" element={<Home />}>
