@@ -22,7 +22,7 @@ export default function Hero() {
           <img 
             src={logo} 
             alt="AgroTech Mendoza Logo" 
-            className="h-64 md:h-[22rem] w-auto object-contain shrink-0" 
+            className="logo-img h-64 md:h-[22rem] w-auto object-contain shrink-0" 
           />
           
           {/* Texto al lado del logo */}
