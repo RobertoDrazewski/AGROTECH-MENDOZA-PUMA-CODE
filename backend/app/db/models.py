@@ -20,14 +20,20 @@ class Telemetria(Base):
     __tablename__ = "telemetria"
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     vinedo_id = Column(String(64), ForeignKey("cuarteles.vinedo_id", ondelete="CASCADE"), nullable=False, index=True)
+    source = Column(String(20), nullable=False, default="simulator")
     leido_en = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     temp_aire = Column(Numeric(5, 2))
     humedad_aire = Column(Numeric(5, 2))
     presion_atm = Column(Numeric(6, 2))
     humedad_suelo = Column(Numeric(5, 2))
+    temp_suelo = Column(Numeric(5, 2))
     uva_brix = Column(Numeric(5, 2))
     uva_ph = Column(Numeric(4, 3))
     bateria = Column(Integer)
+    bateria_v = Column(Numeric(4, 2))
+    lat = Column(Numeric(9, 6))
+    lon = Column(Numeric(9, 6))
+    rssi = Column(Integer)
     alerta_helada = Column(Boolean, nullable=False, default=False)
 
 

@@ -24,7 +24,6 @@ def run_simulator():
                     from app.db.database import save_telemetry_db
                     save_telemetry_db(ciclo)
                 except Exception as e:
-                    # Filtramos el spam masivo de SQLAlchemy si es un error de llave foránea
                     if "1452" in str(e):
                         print("--> [DB WARN] Error 1452: Llave foránea rechazada. Revisa el schema de 'cuarteles' en MySQL. Persistencia omitida este ciclo.")
                     else:
@@ -35,15 +34,41 @@ def run_simulator():
             time.sleep(5)
 
 
+def sembrar_nasa_en_segundo_plano():
+    """Siembra el histórico de NASA SIN bloquear el arranque del servidor.
+    Corre en su propio hilo: el server levanta al instante y NASA se carga
+    detrás. Si NASA falla, el simulador usa su historial sintético."""
+    persist = bool(settings.DATABASE_URL)
+    sembrar_en_db = False
+    if persist:
+        try:
+            from app.db.database import ya_hay_datos_nasa
+            sembrar_en_db = not ya_hay_datos_nasa()
+        except Exception as e:
+            print(f"--> [NASA] No se pudo verificar estado en DB: {e}")
+
+    try:
+        from app.db.database import save_telemetry_db
+        persist_fn = save_telemetry_db if sembrar_en_db else None
+        ok = vinedo_sim.sembrar_desde_nasa(dias=60, persist_fn=persist_fn)
+        if not ok:
+            vinedo_sim.inicializar_con_historial(horas_atras=48)
+    except Exception as e:
+        print(f"--> [NASA] Falló la siembra ({e}); uso historial sintético.")
+        vinedo_sim.inicializar_con_historial(horas_atras=48)
+
+    # El hilo del simulador en vivo arranca DESPUÉS de sembrar (en este mismo hilo)
+    threading.Thread(target=run_simulator, daemon=True).start()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 1. Asegurar integridad en MySQL ANTES de iniciar la simulación
     if bool(settings.DATABASE_URL):
         try:
-            from app.db.database import engine
+            from app.db.database import get_engine
             from sqlalchemy import text
-            with engine.begin() as conn:
-                # Inserción segura ignorando duplicados para no chocar si ya existen
+            with get_engine().begin() as conn:
                 conn.execute(text("""
                     INSERT IGNORE INTO cuarteles (vinedo_id, variedad, hectareas, zona) VALUES
                     ('Cuartel_Malbec_1', 'Malbec', 4.2, 'Maipú'),
@@ -56,12 +81,10 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"--> [DB] Error al sincronizar cuarteles: {e}")
 
-    # 2. Inicializar simulador en memoria
-    vinedo_sim.inicializar_con_historial(horas_atras=48)
-    
-    # 3. Iniciar el hilo del simulador
-    threading.Thread(target=run_simulator, daemon=True).start()
-    
+    # 2. Sembrar NASA + arrancar simulador EN SEGUNDO PLANO (no bloquea el arranque)
+    threading.Thread(target=sembrar_nasa_en_segundo_plano, daemon=True).start()
+    print("--> [NASA] Siembra iniciada en segundo plano. El servidor ya está listo.")
+
     yield
     print("--> Deteniendo AgroTech Mendoza.")
 

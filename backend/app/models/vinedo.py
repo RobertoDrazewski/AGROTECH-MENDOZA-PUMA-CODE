@@ -39,6 +39,7 @@ class VinedoStorage:
         full_record = {
             "id": self._global_id_counter,
             "timestamp": telemetry_data.get("timestamp") or datetime.utcnow(),
+            "source": telemetry_data.get("source", "simulator"),
             **telemetry_data,
             "alerta_helada": telemetry_data["temp_aire"] <= 2.0,
         }
@@ -57,6 +58,28 @@ class VinedoStorage:
 
     def get_meta(self, vinedo_id: str) -> Dict[str, Any]:
         return self.meta.get(vinedo_id, {})
+
+    def register_node_cuartel(self, vinedo_id: str, lat: float, lon: float,
+                              variedad: str = "Nodo de prueba",
+                              hectareas: float = 0.1, zona: str = "Patio") -> None:
+        """Crea (si no existe) un cuartel asociado a un NODO REAL ubicado por
+        GPS. Lo usa el endpoint /ingest la primera vez que un nodo Heltec
+        reporta su posicion. Marca el cuartel como is_hardware=True para que el
+        dashboard lo muestre como 'sensor real' y no como demo."""
+        if vinedo_id not in self.meta:
+            self.meta[vinedo_id] = {}
+        self.meta[vinedo_id].update({
+            "vinedo_id": vinedo_id,
+            "variedad": self.meta[vinedo_id].get("variedad", variedad),
+            "hectareas": self.meta[vinedo_id].get("hectareas", hectareas),
+            "lat": lat,
+            "lon": lon,
+            "zona": zona,
+            "is_hardware": True,
+            "geocerca": self.meta[vinedo_id].get("geocerca", []),
+        })
+        if vinedo_id not in self._db:
+            self._db[vinedo_id] = []
 
 
 db_vinedos = VinedoStorage()

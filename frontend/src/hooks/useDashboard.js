@@ -7,6 +7,7 @@ export default function useDashboard(pollMs = 3000) {
   const [telemetry, setTelemetry] = useState([]);
   const [frost, setFrost] = useState(null);
   const [harvest, setHarvest] = useState(null);
+  const [anomaly, setAnomaly] = useState(null);   // ← NUEVO: anomalía ML (Isolation Forest)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -28,14 +29,16 @@ export default function useDashboard(pollMs = 3000) {
   const fetchAll = useCallback(async (id) => {
     if (!id) return;
     try {
-      const [h, f, c] = await Promise.all([
+      const [h, f, c, a] = await Promise.all([
         apiService.getTelemetria(id, 24),
         apiService.getPrediccionHelada(id),
         apiService.getAnalisisCosecha(id),
+        apiService.getAnomaliaML(id),          // ← NUEVO
       ]);
       setTelemetry(Array.isArray(h) ? h : []);
       setFrost(f || null);
       setHarvest(c || null);
+      setAnomaly(a || null);                   // ← NUEVO
       setError(null);
     } catch (e) {
       setError('Error actualizando datos de sensores.');
@@ -52,5 +55,5 @@ export default function useDashboard(pollMs = 3000) {
   const current = telemetry.length ? telemetry[telemetry.length - 1] : null;
   const currentTemp = current ? (current.temp_aire ?? current.Temp_Aire_C ?? 12) : 12;
 
-  return { vinedos, selected, setSelected, telemetry, frost, harvest, current, currentTemp, loading, error };
+  return { vinedos, selected, setSelected, telemetry, frost, harvest, anomaly, current, currentTemp, loading, error };
 }

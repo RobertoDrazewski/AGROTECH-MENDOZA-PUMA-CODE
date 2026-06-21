@@ -44,16 +44,39 @@ def save_telemetry_db(records):
         for r in records:
             s.add(models.Telemetria(
                 vinedo_id=r["vinedo_id"],
+                source=r.get("source", "simulator"),
                 leido_en=r.get("timestamp"),
                 temp_aire=r.get("temp_aire"),
                 humedad_aire=r.get("humedad_aire"),
                 presion_atm=r.get("presion_atm"),
                 humedad_suelo=r.get("humedad_suelo"),
+                temp_suelo=r.get("temp_suelo"),
                 uva_brix=r.get("uva_brix"),
                 uva_ph=r.get("uva_ph"),
                 bateria=r.get("bateria"),
+                bateria_v=r.get("bateria_v"),
+                lat=r.get("lat"),
+                lon=r.get("lon"),
+                rssi=r.get("rssi"),
                 alerta_helada=bool((r.get("temp_aire") or 99) <= 2.0),
             ))
         s.commit()
     finally:
         s.close()
+
+def ya_hay_datos_nasa():
+    """True si la tabla telemetria ya tiene lecturas con source='historical_nasa'.
+    Se usa para sembrar el historico real UNA sola vez (idempotente): en cada
+    reinicio de Railway no se vuelve a sembrar ni se duplican filas."""
+    from sqlalchemy import text
+    try:
+        eng = get_engine()
+        with eng.connect() as conn:
+            n = conn.execute(text(
+                "SELECT COUNT(*) FROM telemetria WHERE source = 'historical_nasa'"
+            )).scalar()
+        return (n or 0) > 0
+    except Exception as e:
+        print(f"--> [DB] No se pudo verificar datos NASA: {e}")
+        # Ante la duda, decimos que SI hay (no sembramos) para no arriesgar duplicados
+        return True

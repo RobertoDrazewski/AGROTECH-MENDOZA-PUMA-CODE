@@ -2,10 +2,12 @@ from fastapi import APIRouter
 from app.models.vinedo import db_vinedos
 from app.ml_models.frost_predictor import FrostPredictor
 from app.ml_models.harvest_optimizer import HarvestOptimizer
+from app.ml_models.anomaly_detector import AnomalyDetector
 
 router = APIRouter(prefix="/analisis", tags=["Inteligencia Artificial"])
 frost = FrostPredictor()
 harvest = HarvestOptimizer()
+anomaly = AnomalyDetector()  # Isolation Forest entrenado con historico de Mendoza
 
 
 @router.get("/helada/{vinedo_id}")
@@ -14,7 +16,37 @@ def riesgo_helada(vinedo_id: str):
     if not historial:
         return {"risk_level": "LOW", "current_temp": 14.0, "cooling_rate_c_per_hour": 0.0,
                 "probability": 0.0, "message": "Sin lecturas suficientes."}
-    return frost.predict_frost_risk(historial)
+
+    # 1) Predictor fisico (punto de rocio + tendencia) — explica el POR QUE
+    fisico = frost.predict_frost_risk(historial)
+
+    # 2) Modelo ML real (Isolation Forest) — detecta el PATRON anomalo
+    ml = anomaly.score(historial)
+    if ml is not None:
+        fisico["ml_anomaly"] = ml
+        if ml["es_anomalia"] and ml["score_anomalia"] > 0.55:
+            if fisico["risk_level"] == "LOW":
+                fisico["risk_level"] = "MEDIUM"
+                fisico["probability"] = max(fisico.get("probability", 0), 0.45)
+                fisico["message"] += (" El modelo de ML detecto un patron "
+                                      "climatico anomalo (posible helada en formacion).")
+        fisico["motor"] = "fisico + IsolationForest"
+    else:
+        fisico["motor"] = "fisico (ML no entrenado)"
+
+    return fisico
+
+
+@router.get("/anomalia/{vinedo_id}")
+def deteccion_anomalia_ml(vinedo_id: str, limit: int = 24):
+    """Isolation Forest: puntua la serie reciente y devuelve el grado de
+    anomalia climatica. Pieza de ML que respalda el claim de CV."""
+    historial = db_vinedos.get_history(vinedo_id, limit=limit)
+    ml = anomaly.score(historial)
+    if ml is None:
+        return {"disponible": False,
+                "mensaje": "Modelo no entrenado. Corre: python -m app.ml_models.anomaly_detector --train"}
+    return {"disponible": True, "vinedo_id": vinedo_id, **ml}
 
 
 @router.get("/cosecha/{vinedo_id}")

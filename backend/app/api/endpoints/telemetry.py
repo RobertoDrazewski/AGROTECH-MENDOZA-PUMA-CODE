@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from app.models.vinedo import db_vinedos
 from app.schemas.telemetry import TelemetryCreate
 
-router = APIRouter(prefix="/telemetria", tags=["Telemetría"])
+router = APIRouter(prefix="/telemetria", tags=["Telemetria"])
 
 
 @router.get("", response_model=list)
@@ -17,14 +17,13 @@ def lista_vinedos_legacy():
 
 @router.get("/cuarteles")
 def cuarteles_detallados():
-    """Lista de cuarteles con metadatos (variedad, hectáreas, coordenadas, geocerca)."""
+    """Lista de cuarteles con metadatos. Incluye is_hardware para que el
+    dashboard distinga nodos reales de cuarteles de demo."""
     return [db_vinedos.get_meta(v) for v in db_vinedos.get_all_vinedos_ids()]
 
 
 @router.post("/cuarteles/{vinedo_id}/geocerca")
 def guardar_geocerca(vinedo_id: str, puntos: list[dict]):
-    """Guarda el contorno real del cuartel: lista de puntos [{lat, lon}, ...]
-    marcados a mano sobre el mapa satelital, o caminados con GPS en el campo."""
     if len(puntos) < 3:
         raise HTTPException(400, "La geocerca necesita al menos 3 puntos.")
     db_vinedos.set_geocerca(vinedo_id, puntos)
@@ -33,10 +32,29 @@ def guardar_geocerca(vinedo_id: str, puntos: list[dict]):
 
 @router.post("/ingest")
 def ingestar_telemetria_real(payload: TelemetryCreate):
-    """Endpoint que usará el hardware ESP32/LoRaWAN cuando se conecte.
-    El gateway LoRa decodifica el paquete y hace POST aquí."""
-    rec = db_vinedos.save_telemetry(payload.model_dump())
-    return {"status": "ok", "id": rec["id"], "vinedo_id": rec["vinedo_id"]}
+    """Endpoint que usa el nodo Heltec Wireless Tracker.
+    El nodo hace POST por WiFi directo (etapa de banco/patio) o via gateway
+    LoRa (etapa de finca). Si trae lat/lon GPS y el cuartel no existe todavia,
+    se registra automaticamente como nodo real — asi sale solo el 'Patio_Test'
+    la primera vez que el nodo de tu casa reporta su posicion."""
+    data = payload.model_dump(mode="json")
+
+    # Auto-registro del cuartel a partir del GPS del nodo
+    if data.get("lat") is not None and data.get("lon") is not None:
+        if data["vinedo_id"] not in db_vinedos.get_all_vinedos_ids():
+            db_vinedos.register_node_cuartel(
+                data["vinedo_id"], data["lat"], data["lon"],
+                zona=data.get("node_id", "Patio"),
+            )
+
+    rec = db_vinedos.save_telemetry(data)
+    return {
+        "status": "ok",
+        "id": rec["id"],
+        "vinedo_id": rec["vinedo_id"],
+        "source": rec.get("source"),
+        "alerta_helada": rec.get("alerta_helada"),
+    }
 
 
 @router.get("/{vinedo_id}")

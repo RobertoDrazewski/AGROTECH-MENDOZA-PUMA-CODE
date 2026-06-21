@@ -106,7 +106,70 @@ class VinedoSimulator:
         self.current_simulated_time = datetime.now() - timedelta(hours=horas_atras)
         for _ in range(horas_atras):
             self.avanzar_un_ciclo()
-        print(f"--> [SIMULADOR] Inicializado con {horas_atras} horas de datos históricos.")
+        print(f"--> [SIMULADOR] Inicializado con {horas_atras} horas de datos sintéticos.")
+
+    def sembrar_desde_nasa(self, dias: int = 60, persist_fn=None):
+        """Siembra cada cuartel con el histórico climático REAL de NASA POWER y
+        deja al simulador continuando desde el último punto real (sin saltos).
+
+        - persist_fn: callable opcional para guardar cada lectura en MySQL
+          (ej. save_telemetry_db). Si es None, solo carga en memoria.
+        - Si NASA no responde, cae a inicializar_con_historial() (comportamiento
+          original). Nunca rompe el arranque.
+
+        Marca las lecturas reales con source='historical_nasa' para que el
+        dashboard pueda distinguir 'base histórica real' de 'proyección en vivo'.
+        """
+        from app.db.nasa_loader import cargar_historico
+        coords = {vid: (m["lat"], m["lon"])
+                  for vid, m in db_vinedos.meta.items()
+                  if m.get("lat") is not None}
+
+        historico = cargar_historico(coords, dias=dias)
+        if not historico:
+            print("--> [NASA] Sin datos reales; uso historial sintético.")
+            self.inicializar_con_historial(horas_atras=48)
+            return False
+
+        ultimo_estado = {}
+        total = 0
+        for vinedo_id, filas in historico.items():
+            filas.sort(key=lambda x: x["timestamp"])
+            for f in filas:
+                rec = {
+                    "vinedo_id": vinedo_id,
+                    "timestamp": f["timestamp"],
+                    "source": "historical_nasa",
+                    "temp_aire": f["temp_aire"],
+                    "humedad_aire": f["humedad_aire"],
+                    "presion_atm": f["presion_atm"],
+                    # NASA no mide suelo/uva: estos los proyecta el simulador.
+                    "humedad_suelo": self.cuarteles.get(vinedo_id, {}).get("humedad_suelo", 30.0),
+                    "uva_brix": self.cuarteles.get(vinedo_id, {}).get("brix", 20.0),
+                    "uva_ph": self.cuarteles.get(vinedo_id, {}).get("ph", 3.1),
+                }
+                db_vinedos.save_telemetry(rec)
+                total += 1
+            # El simulador continúa desde el último valor REAL de este cuartel
+            if filas:
+                ultimo_estado[vinedo_id] = filas[-1]["timestamp"]
+
+        # El reloj del simulador arranca donde terminó NASA
+        if ultimo_estado:
+            self.current_simulated_time = max(ultimo_estado.values())
+
+        if persist_fn:
+            try:
+                for vinedo_id, filas in historico.items():
+                    persist_fn([{**f, "vinedo_id": vinedo_id,
+                                 "source": "historical_nasa"} for f in filas])
+                print("--> [NASA] Histórico real persistido en MySQL.")
+            except Exception as e:
+                print(f"--> [NASA] No se pudo persistir en MySQL: {e}")
+
+        print(f"--> [NASA] Sembrados {total} registros reales en {len(historico)} "
+              f"cuarteles. El simulador continúa en vivo desde el último dato real.")
+        return True
 
 
 vinedo_sim = VinedoSimulator()

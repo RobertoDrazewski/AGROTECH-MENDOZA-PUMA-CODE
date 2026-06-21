@@ -16,6 +16,7 @@ const apiService = {
   getTelemetria:        async (id, limit = 24) => (await api.get(`/telemetria/${id}?limit=${limit}`)).data,
   getPrediccionHelada:  async (id) => (await api.get(`/analisis/helada/${id}`)).data,
   getAnalisisCosecha:   async (id) => (await api.get(`/analisis/cosecha/${id}`)).data,
+  getAnomaliaML:        async (id) => (await api.get(`/analisis/anomalia/${id}`)).data,
   getHistorico:         async (id, periodo = 'mensual') => (await api.get(`/analisis/historico/${id}?periodo=${periodo}`)).data,
   getClima:             async (id) => (await api.get(`/clima/${id}`)).data,
   getRiego:             async (id) => (await api.get(`/riego/${id}`)).data,
