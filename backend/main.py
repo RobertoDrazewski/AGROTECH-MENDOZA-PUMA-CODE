@@ -36,28 +36,30 @@ def run_simulator():
 
 def sembrar_nasa_en_segundo_plano():
     """Siembra el histórico de NASA SIN bloquear el arranque del servidor.
-    Corre en su propio hilo: el server levanta al instante y NASA se carga
-    detrás. Si NASA falla, el simulador usa su historial sintético."""
+    Idempotente POR CUARTEL: solo persiste en MySQL los cuarteles que todavía
+    no tienen datos NASA (incluye nodos nuevos). Si NASA falla, usa sintético."""
     persist = bool(settings.DATABASE_URL)
-    sembrar_en_db = False
+    ya_sembrados = set()
+    persist_fn = None
     if persist:
         try:
-            from app.db.database import ya_hay_datos_nasa
-            sembrar_en_db = not ya_hay_datos_nasa()
+            from app.db.database import cuarteles_con_datos_nasa, save_telemetry_db
+            ya_sembrados = cuarteles_con_datos_nasa()
+            persist_fn = save_telemetry_db
+            if ya_sembrados:
+                print(f"--> [NASA] Cuarteles ya sembrados (se saltean): {ya_sembrados}")
         except Exception as e:
             print(f"--> [NASA] No se pudo verificar estado en DB: {e}")
 
     try:
-        from app.db.database import save_telemetry_db
-        persist_fn = save_telemetry_db if sembrar_en_db else None
-        ok = vinedo_sim.sembrar_desde_nasa(dias=60, persist_fn=persist_fn)
+        ok = vinedo_sim.sembrar_desde_nasa(dias=60, persist_fn=persist_fn,
+                                           saltear=ya_sembrados)
         if not ok:
             vinedo_sim.inicializar_con_historial(horas_atras=48)
     except Exception as e:
         print(f"--> [NASA] Falló la siembra ({e}); uso historial sintético.")
         vinedo_sim.inicializar_con_historial(horas_atras=48)
 
-    # El hilo del simulador en vivo arranca DESPUÉS de sembrar (en este mismo hilo)
     threading.Thread(target=run_simulator, daemon=True).start()
 
 

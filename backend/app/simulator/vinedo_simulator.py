@@ -108,19 +108,18 @@ class VinedoSimulator:
             self.avanzar_un_ciclo()
         print(f"--> [SIMULADOR] Inicializado con {horas_atras} horas de datos sintéticos.")
 
-    def sembrar_desde_nasa(self, dias: int = 60, persist_fn=None):
+    def sembrar_desde_nasa(self, dias: int = 60, persist_fn=None, saltear=None):
         """Siembra cada cuartel con el histórico climático REAL de NASA POWER y
         deja al simulador continuando desde el último punto real (sin saltos).
 
-        - persist_fn: callable opcional para guardar cada lectura en MySQL
-          (ej. save_telemetry_db). Si es None, solo carga en memoria.
-        - Si NASA no responde, cae a inicializar_con_historial() (comportamiento
-          original). Nunca rompe el arranque.
-
-        Marca las lecturas reales con source='historical_nasa' para que el
-        dashboard pueda distinguir 'base histórica real' de 'proyección en vivo'.
+        - persist_fn: callable opcional para guardar en MySQL (save_telemetry_db).
+        - saltear: set de vinedo_id que YA tienen datos NASA en MySQL; no se
+          re-persisten (idempotencia POR CUARTEL). En memoria sí se cargan
+          siempre, para que el dashboard y el ML tengan la serie completa.
+        - Si NASA no responde, cae a inicializar_con_historial(). Nunca rompe.
         """
         from app.db.nasa_loader import cargar_historico
+        saltear = saltear or set()
         coords = {vid: (m["lat"], m["lon"])
                   for vid, m in db_vinedos.meta.items()
                   if m.get("lat") is not None}
@@ -131,44 +130,51 @@ class VinedoSimulator:
             self.inicializar_con_historial(horas_atras=48)
             return False
 
+        def construir_rec(vinedo_id, f):
+            return {
+                "vinedo_id": vinedo_id,
+                "timestamp": f["timestamp"],
+                "source": "historical_nasa",
+                "temp_aire": f["temp_aire"],
+                "humedad_aire": f["humedad_aire"],
+                "presion_atm": f["presion_atm"],
+                # NASA no mide suelo/uva: estos los proyecta el simulador.
+                "humedad_suelo": self.cuarteles.get(vinedo_id, {}).get("humedad_suelo", 30.0),
+                "uva_brix": self.cuarteles.get(vinedo_id, {}).get("brix", 20.0),
+                "uva_ph": self.cuarteles.get(vinedo_id, {}).get("ph", 3.1),
+            }
+
         ultimo_estado = {}
-        total = 0
+        total_mem = 0
+        persistidos = []
         for vinedo_id, filas in historico.items():
             filas.sort(key=lambda x: x["timestamp"])
-            for f in filas:
-                rec = {
-                    "vinedo_id": vinedo_id,
-                    "timestamp": f["timestamp"],
-                    "source": "historical_nasa",
-                    "temp_aire": f["temp_aire"],
-                    "humedad_aire": f["humedad_aire"],
-                    "presion_atm": f["presion_atm"],
-                    # NASA no mide suelo/uva: estos los proyecta el simulador.
-                    "humedad_suelo": self.cuarteles.get(vinedo_id, {}).get("humedad_suelo", 30.0),
-                    "uva_brix": self.cuarteles.get(vinedo_id, {}).get("brix", 20.0),
-                    "uva_ph": self.cuarteles.get(vinedo_id, {}).get("ph", 3.1),
-                }
+            recs = [construir_rec(vinedo_id, f) for f in filas]
+
+            # 1) Siempre cargamos en memoria (dashboard + ML necesitan la serie)
+            for rec in recs:
                 db_vinedos.save_telemetry(rec)
-                total += 1
-            # El simulador continúa desde el último valor REAL de este cuartel
+                total_mem += 1
             if filas:
                 ultimo_estado[vinedo_id] = filas[-1]["timestamp"]
+
+            # 2) Persistimos en MySQL SOLO si este cuartel no estaba ya sembrado.
+            #    Cada cuartel en su propio try: si uno falla, los demás siguen.
+            if persist_fn and vinedo_id not in saltear:
+                try:
+                    persist_fn(recs)
+                    persistidos.append(vinedo_id)
+                    print(f"--> [NASA] {vinedo_id}: {len(recs)} registros persistidos en MySQL.")
+                except Exception as e:
+                    print(f"--> [NASA] {vinedo_id}: no se pudo persistir ({e}).")
 
         # El reloj del simulador arranca donde terminó NASA
         if ultimo_estado:
             self.current_simulated_time = max(ultimo_estado.values())
 
-        if persist_fn:
-            try:
-                for vinedo_id, filas in historico.items():
-                    persist_fn([{**f, "vinedo_id": vinedo_id,
-                                 "source": "historical_nasa"} for f in filas])
-                print("--> [NASA] Histórico real persistido en MySQL.")
-            except Exception as e:
-                print(f"--> [NASA] No se pudo persistir en MySQL: {e}")
-
-        print(f"--> [NASA] Sembrados {total} registros reales en {len(historico)} "
-              f"cuarteles. El simulador continúa en vivo desde el último dato real.")
+        print(f"--> [NASA] Cargados {total_mem} registros en memoria; "
+              f"persistidos {len(persistidos)} cuarteles nuevos en MySQL. "
+              f"El simulador continúa en vivo desde el último dato real.")
         return True
 
 

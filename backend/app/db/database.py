@@ -80,3 +80,20 @@ def ya_hay_datos_nasa():
         print(f"--> [DB] No se pudo verificar datos NASA: {e}")
         # Ante la duda, decimos que SI hay (no sembramos) para no arriesgar duplicados
         return True
+
+
+def cuarteles_con_datos_nasa():
+    """Devuelve el set de vinedo_id que YA tienen lecturas historical_nasa.
+    Permite sembrar SOLO los cuarteles que faltan (idempotencia por cuartel):
+    si agregas un nodo nuevo, se le siembra su historico sin tocar los demas."""
+    from sqlalchemy import text
+    try:
+        eng = get_engine()
+        with eng.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT DISTINCT vinedo_id FROM telemetria WHERE source = 'historical_nasa'"
+            )).fetchall()
+        return {r[0] for r in rows}
+    except Exception as e:
+        print(f"--> [DB] No se pudo listar cuarteles con datos NASA: {e}")
+        return set()
