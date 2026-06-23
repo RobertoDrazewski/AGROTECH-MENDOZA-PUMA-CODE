@@ -39,15 +39,35 @@ def ingestar_telemetria_real(payload: TelemetryCreate):
     la primera vez que el nodo de tu casa reporta su posicion."""
     data = payload.model_dump(mode="json")
 
-    # Auto-registro del cuartel a partir del GPS del nodo
+    # Auto-registro / refinamiento de posicion a partir del GPS del nodo
     if data.get("lat") is not None and data.get("lon") is not None:
         if data["vinedo_id"] not in db_vinedos.get_all_vinedos_ids():
+            # Nodo nuevo: se crea solo la primera vez que reporta con GPS
             db_vinedos.register_node_cuartel(
                 data["vinedo_id"], data["lat"], data["lon"],
                 zona=data.get("node_id", "Patio"),
             )
+        else:
+            # Cuartel ya conocido (pre-registrado): mover el marcador a la
+            # posicion GPS real sin pisar variedad/hectareas/geocerca.
+            meta = db_vinedos.get_meta(data["vinedo_id"])
+            if meta:
+                meta["lat"] = data["lat"]
+                meta["lon"] = data["lon"]
 
     rec = db_vinedos.save_telemetry(data)
+
+    # Persistir tambien en MySQL para que el dato REAL sobreviva reinicios de
+    # Railway y quede junto al historico, igual que el simulador. No es fatal:
+    # si la DB falla, el nodo igual queda guardado en memoria y responde OK.
+    try:
+        from app.core.config import settings
+        if bool(settings.DATABASE_URL):
+            from app.db.database import save_telemetry_db
+            save_telemetry_db([rec])
+    except Exception as e:
+        print(f"--> [INGEST] No se pudo persistir en MySQL (sigo OK): {e}")
+
     return {
         "status": "ok",
         "id": rec["id"],

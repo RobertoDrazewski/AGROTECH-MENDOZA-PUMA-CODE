@@ -22,6 +22,12 @@ const apiService = {
   getRiego:             async (id) => (await api.get(`/riego/${id}`)).data,
   getFitosanitario:     async (id) => (await api.get(`/fitosanitario/${id}`)).data,
   getModeloFito:        async () => (await api.get('/fitosanitario/modelo')).data,
+  // --- Trampas físicas (nodos ESP32-CAM) ---
+  getTrampasFisicas:    async () => (await api.get('/fitosanitario/trampas-fisicas')).data,
+  getTrampaFisica:      async (trapId) => (await api.get(`/fitosanitario/trampa/${trapId}`)).data,
+  urlImagenTrampa:      (trapId) => `${BASE}/fitosanitario/trampa/${trapId}/imagen`,
+  solicitarCaptura:     async (trapId) => (await api.post(`/fitosanitario/trampa/${trapId}/solicitar-captura`)).data,
+  // ------------------------------------------
   comandoRiego:         async (id, accion) => (await api.post(`/riego/${id}/comando`, { accion })).data,
   chat:                 async (message, history = []) => (await api.post('/chat', { message, history })).data,
   enviarContacto:       async (data) => (await api.post('/contacto', data)).data,

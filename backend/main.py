@@ -77,11 +77,26 @@ async def lifespan(app: FastAPI):
                     ('Cuartel_Cabernet_2', 'Cabernet Sauvignon', 3.1, 'Luján de Cuyo'),
                     ('Cuartel_Chardonnay_3', 'Chardonnay', 2.4, 'Agrelo'),
                     ('Cuartel_Syrah_4', 'Syrah', 3.8, 'Tunuyán'),
-                    ('Cuartel_Bonarda_5', 'Bonarda', 3.5, 'Tupungato');
+                    ('Cuartel_Bonarda_5', 'Bonarda', 3.5, 'Tupungato'),
+                    ('Patio_Casa', 'Hardware Heltec (real)', 0.10, 'Patio - Maipú');
                 """))
             print("--> [DB] Sincronización de cuarteles ejecutada en MySQL.")
         except Exception as e:
             print(f"--> [DB] Error al sincronizar cuarteles: {e}")
+
+    # 1b. Pre-registrar el NODO REAL del patio (hardware). Asi aparece en el
+    #     dashboard y se le puede dibujar la geocerca AUN antes de que reporte,
+    #     y aunque el GPS no fije bajo techo. Cuando el nodo manda su primer
+    #     POST con fix GPS, /ingest refina lat/lon a la posicion real.
+    #     NO toca el simulador: este cuartel nunca recibe datos sinteticos.
+    try:
+        db_vinedos.register_node_cuartel(
+            "Patio_Casa", lat=-32.9833, lon=-68.7833,
+            variedad="Hardware Heltec (real)", hectareas=0.10, zona="Patio - Maipú",
+        )
+        print("--> [HW] Nodo de patio 'Patio_Casa' pre-registrado (hardware real).")
+    except Exception as e:
+        print(f"--> [HW] No se pudo pre-registrar el nodo de patio: {e}")
 
     # 2. Sembrar NASA + arrancar simulador EN SEGUNDO PLANO (no bloquea el arranque)
     threading.Thread(target=sembrar_nasa_en_segundo_plano, daemon=True).start()
