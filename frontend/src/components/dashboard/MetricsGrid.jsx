@@ -1,5 +1,5 @@
 import React from 'react';
-import { Thermometer, Droplets, Gauge, Shovel, Radio, FlaskConical, BrainCircuit } from 'lucide-react';
+import { Thermometer, Droplets, Gauge, Shovel, Radio, FlaskConical, BrainCircuit, BatteryMedium } from 'lucide-react';
 
 /**
  * MetricsGrid
@@ -7,6 +7,7 @@ import { Thermometer, Droplets, Gauge, Shovel, Radio, FlaskConical, BrainCircuit
  *   con un badge, para que en la ANR/bodega quede claro qué es dato físico.
  * - Muestra Brix/pH como "estimado (lab)" cuando el nodo real no los mide.
  * - Sexta tarjeta opcional: score de anomalía del Isolation Forest.
+ * - Tarjeta de batería del nodo (solo si el hardware manda bateria_v).
  */
 export default function MetricsGrid({ currentData, anomaly }) {
   if (!currentData) {
@@ -21,7 +22,7 @@ export default function MetricsGrid({ currentData, anomaly }) {
 
   const {
     temp_aire, humedad_aire, presion_atm, humedad_suelo,
-    temp_suelo, source,
+    temp_suelo, source, bateria_v,
   } = currentData;
 
   const isHardware = source === 'hardware';
@@ -77,6 +78,21 @@ export default function MetricsGrid({ currentData, anomaly }) {
       borderColor: "border-slate-800",
       bgGradient: "from-slate-900/50 to-transparent",
       caption: "Sonda DS18B20 a 30 cm"
+    });
+  }
+
+  // Tarjeta de batería del nodo (solo si el hardware la manda)
+  if (bateria_v !== null && bateria_v !== undefined) {
+    const pct = Math.max(0, Math.min(100, Math.round(((bateria_v - 3.3) / 0.9) * 100)));
+    const batLow = bateria_v < 3.5;
+    metrics.push({
+      title: "Batería del Nodo",
+      value: `${Number(bateria_v).toFixed(2)} V · ${pct}%`,
+      icon: BatteryMedium,
+      iconColor: batLow ? "text-rose-400 animate-pulse" : "text-lime-400",
+      borderColor: batLow ? "border-rose-500/40 shadow-lg shadow-rose-950/50" : "border-slate-800",
+      bgGradient: batLow ? "from-rose-950/20 to-transparent" : "from-slate-900/50 to-transparent",
+      caption: batLow ? "Batería baja · revisar carga" : "Alimentación del nodo OK"
     });
   }
 
