@@ -7,7 +7,8 @@ export default function useDashboard(pollMs = 3000) {
   const [telemetry, setTelemetry] = useState([]);
   const [frost, setFrost] = useState(null);
   const [harvest, setHarvest] = useState(null);
-  const [anomaly, setAnomaly] = useState(null);   // ← NUEVO: anomalía ML (Isolation Forest)
+  const [anomaly, setAnomaly] = useState(null);
+  const [nasa, setNasa] = useState(null);      // ← NUEVO: Estado para datos NASA
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -29,16 +30,20 @@ export default function useDashboard(pollMs = 3000) {
   const fetchAll = useCallback(async (id) => {
     if (!id) return;
     try {
-      const [h, f, c, a] = await Promise.all([
+      // Agregamos getNasaData al Promise.all
+      const [h, f, c, a, n] = await Promise.all([
         apiService.getTelemetria(id, 24),
         apiService.getPrediccionHelada(id),
         apiService.getAnalisisCosecha(id),
-        apiService.getAnomaliaML(id),          // ← NUEVO
+        apiService.getAnomaliaML(id),
+        apiService.getNasaData(id),          // ← NUEVO: Llamada a la API de NASA
       ]);
+      
       setTelemetry(Array.isArray(h) ? h : []);
       setFrost(f || null);
       setHarvest(c || null);
-      setAnomaly(a || null);                   // ← NUEVO
+      setAnomaly(a || null);
+      setNasa(n || null);                    // ← NUEVO: Actualizamos el estado de NASA
       setError(null);
     } catch (e) {
       setError('Error actualizando datos de sensores.');
@@ -55,5 +60,6 @@ export default function useDashboard(pollMs = 3000) {
   const current = telemetry.length ? telemetry[telemetry.length - 1] : null;
   const currentTemp = current ? (current.temp_aire ?? current.Temp_Aire_C ?? 12) : 12;
 
-  return { vinedos, selected, setSelected, telemetry, frost, harvest, anomaly, current, currentTemp, loading, error };
+  // Retornamos 'nasa' para que el componente TabTelemetria pueda usarlo
+  return { vinedos, selected, setSelected, telemetry, frost, harvest, anomaly, nasa, current, currentTemp, loading, error };
 }
