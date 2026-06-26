@@ -12,7 +12,10 @@ anomaly = AnomalyDetector()  # Isolation Forest entrenado con historico de Mendo
 
 @router.get("/helada/{vinedo_id}")
 def riesgo_helada(vinedo_id: str):
-    historial = db_vinedos.get_history(vinedo_id, limit=6)
+    # limit=180: a 20s por lectura son ~1h de ventana. El frost_predictor
+    # robusto calcula el enfriamiento en C/hora sobre el span temporal real;
+    # con pocas lecturas (antes 6 = ~2 min) no podia proyectar la tendencia.
+    historial = db_vinedos.get_history(vinedo_id, limit=180)
     if not historial:
         return {"risk_level": "LOW", "current_temp": 14.0, "cooling_rate_c_per_hour": 0.0,
                 "probability": 0.0, "message": "Sin lecturas suficientes."}
@@ -89,18 +92,18 @@ def analisis_historico(vinedo_id: str, periodo: str = "mensual"):
                 continue
             day = ts.strftime("%d/%m") if hasattr(ts, "strftime") else str(ts)[:10]
             by_day.setdefault(day, []).append(r)
-        
+
         serie = []
         for day, regs in list(by_day.items())[-30:]:
             # Filtro defensivo para datos reales del hardware
             temps = [x.get("temp_aire") for x in regs if x.get("temp_aire") is not None]
             brix = [x.get("uva_brix") for x in regs if x.get("uva_brix") is not None]
-            
+
             temp_max = round(max(temps), 1) if temps else 0.0
             temp_min = round(min(temps), 1) if temps else 0.0
             brix_medio = round(sum(brix) / len(brix), 2) if brix else 0.0
             heladas = sum(1 for x in regs if x.get("temp_aire") is not None and x.get("temp_aire") <= 2.0)
-            
+
             serie.append({
                 "periodo": day,
                 "temp_max": temp_max,

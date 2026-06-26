@@ -4,16 +4,11 @@ import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ComposedChart, Area
 } from 'recharts';
-import { Loader2, Layers, Calendar, Thermometer, Droplet, Zap, ShieldAlert } from 'lucide-react';
+import { Loader2, Layers, Calendar, Thermometer, Droplet, Zap, ShieldAlert, Grape } from 'lucide-react';
 
-// Estilos globales de tooltips movidos arriba para evitar errores de hoisting en compilación
-const tooltipStyle = { 
-  backgroundColor: '#0e1512', 
-  border: '1px solid #2a3a2c', 
-  borderRadius: '12px', 
-  fontSize: '11px', 
-  color: '#cdd8c8',
-  fontFamily: 'monospace' 
+const tooltipStyle = {
+  backgroundColor: '#0e1512', border: '1px solid #2a3a2c', borderRadius: '12px',
+  fontSize: '11px', color: '#cdd8c8', fontFamily: 'monospace',
 };
 
 export default function TabAnalisis() {
@@ -26,7 +21,7 @@ export default function TabAnalisis() {
   useEffect(() => {
     apiService.getVinedos().then(v => {
       const safe = Array.isArray(v) ? v : [];
-      setVinedos(safe); 
+      setVinedos(safe);
       if (safe.length) setSelected(safe[0]);
     }).catch(() => setLoading(false));
   }, []);
@@ -40,28 +35,45 @@ export default function TabAnalisis() {
       .finally(() => setLoading(false));
   }, [selected, periodo]);
 
-  // NORMALIZACIÓN DEFENSIVA: Si el backend envía la métrica GDD con otro nombre, 
-  // la mapeamos acá para asegurar que Recharts siempre encuentre la propiedad 'gdd'.
-  const serie = (data?.serie || []).map(item => ({
-    ...item,
-    gdd: item.gdd ?? item.gdd_acumulado ?? item.grados_dia ?? 0
-  }));
+  const serie = data?.serie || [];
 
-  const resumen = data?.resumen || { gdd_total: 1420, noches_helada: 12, estres_hidrico_dias: 4, eficiencia_nodo: 99.4 };
+  // KPIs CALCULADOS desde la serie real (no hardcodeados).
+  const kpis = (() => {
+    if (!serie.length) return null;
+    if (periodo === 'anual') {
+      const gddTotal = serie.reduce((a, s) => a + (s.gdd || 0), 0);
+      const heladas = serie.reduce((a, s) => a + (s.eventos_helada || 0), 0);
+      const lluviaTotal = serie.reduce((a, s) => a + (s.precipitacion_mm || 0), 0);
+      const tempMedia = serie.reduce((a, s) => a + (s.temp_media || 0), 0) / serie.length;
+      return [
+        { title: 'GDD acumulado', value: Math.round(gddTotal).toLocaleString(), desc: 'Grados-día de crecimiento', icon: <Thermometer className="text-[#f59e0b]" /> },
+        { title: 'Noches de helada', value: heladas, desc: 'Eventos bajo umbral en el año', icon: <ShieldAlert className="text-[#22d3ee]" /> },
+        { title: 'Lluvia total', value: `${Math.round(lluviaTotal)} mm`, desc: 'Acumulado anual', icon: <Droplet className="text-[#3b82f6]" /> },
+        { title: 'Temp media', value: `${tempMedia.toFixed(1)}°C`, desc: 'Promedio del período', icon: <Zap className="text-[#9bcc44]" /> },
+      ];
+    }
+    const heladas = serie.reduce((a, s) => a + (s.eventos_helada || 0), 0);
+    const brixVals = serie.map(s => s.brix_medio).filter(b => b > 0);
+    const brixUlt = brixVals.length ? brixVals[brixVals.length - 1] : 0;
+    const tmax = Math.max(...serie.map(s => s.temp_max || -99));
+    const tmin = Math.min(...serie.map(s => s.temp_min || 99));
+    return [
+      { title: 'Días con helada', value: heladas, desc: 'En el período mensual', icon: <ShieldAlert className="text-[#22d3ee]" /> },
+      { title: 'Brix actual', value: brixUlt ? `${brixUlt.toFixed(1)}°` : '--', desc: 'Último azúcar medido', icon: <Grape className="text-[#a21caf]" /> },
+      { title: 'Máx del período', value: `${tmax.toFixed(1)}°C`, desc: 'Temperatura más alta', icon: <Thermometer className="text-[#ef4444]" /> },
+      { title: 'Mín del período', value: `${tmin.toFixed(1)}°C`, desc: 'Temperatura más baja', icon: <Thermometer className="text-[#22d3ee]" /> },
+    ];
+  })();
 
   return (
     <div className="space-y-6">
-      {/* Header del Panel de Control */}
       <div className="flex items-center justify-between flex-wrap gap-4 border-b border-[#2a3a2c]/40 pb-4">
         <div>
           <h2 className="text-xl font-black uppercase italic tracking-tight text-white flex items-center gap-2">
-            <Zap className="w-5 h-5 text-[#9bcc44] animate-pulse" /> Analytics de Telemetría
+            <Zap className="w-5 h-5 text-[#9bcc44]" /> Análisis histórico
           </h2>
-          <p className="text-xs text-[#8a9787]">
-            Análisis predictivo e histórico basado en los nodos de campo y sensores de canopia.
-          </p>
+          <p className="text-xs text-[#8a9787]">Tendencias agroclimáticas por mes y por año, a partir de la telemetría.</p>
         </div>
-        
         <div className="flex gap-3 items-center">
           <div className="bg-[#18211b] border border-[#2a3a2c] rounded-xl p-1 flex">
             {['anual', 'mensual'].map(p => (
@@ -83,83 +95,70 @@ export default function TabAnalisis() {
 
       {loading ? (
         <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-[#9bcc44] w-8 h-8" /></div>
+      ) : serie.length === 0 ? (
+        <div className="h-64 flex items-center justify-center text-sm text-[#5d6f5a] border border-dashed border-[#2a3a2c] rounded-2xl">
+          Sin datos históricos para este cuartel todavía.
+        </div>
       ) : (
         <>
-          {/* Fila de KPIs de Hardware & Agronomía */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard title="Acumulación GDD" value={`${resumen.gdd_total} Ópt`} desc="Grados-Día de Crecimiento" icon={<Thermometer className="text-[#f59e0b]" />} />
-            <KpiCard title="Eventos Helada" value={`${resumen.noches_helada} Noches`} desc="Bajo 0°C en Canopia" icon={<ShieldAlert className="text-[#22d3ee]" />} />
-            <KpiCard title="Estrés Hídrico" value={`${resumen.estres_hidrico_dias} Alertas`} desc="Suelo bajo el marchitamiento" icon={<Droplet className="text-[#3b82f6]" />} />
-            <KpiCard title="Uptime de Nodos" value={`${resumen.eficiencia_nodo}%`} desc="Paquetes I2C/RF estables" icon={<Zap className="text-[#9bcc44]" />} />
-          </div>
+          {/* KPIs calculados desde datos reales */}
+          {kpis && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {kpis.map((k, i) => <KpiCard key={i} {...k} />)}
+            </div>
+          )}
 
-          {/* Bloque de Gráficos según periodo */}
           {periodo === 'anual' ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              <ChartCard title="Dinámica de Suelo: Humedad Volumétrica vs Inercia Térmica (Sonda 30cm)">
+              <ChartCard title="Temperatura media y precipitaciones">
                 <ComposedChart data={serie}>
-                  <defs>
-                    <linearGradient id="colorVwc" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2a3a2c" vertical={false} />
                   <XAxis dataKey="periodo" stroke="#5d6f5a" fontSize={11} />
-                  <YAxis yAxisId="l" stroke="#3b82f6" fontSize={11} label={{ value: 'Humedad %', angle: -90, position: 'insideLeft', fill: '#5d6f5a', fontSize: 10 }} />
-                  <YAxis yAxisId="r" orientation="right" stroke="#f59e0b" fontSize={11} label={{ value: 'Suelo °C', angle: 90, position: 'insideRight', fill: '#5d6f5a', fontSize: 10 }} />
+                  <YAxis yAxisId="l" stroke="#f59e0b" fontSize={11} />
+                  <YAxis yAxisId="r" orientation="right" stroke="#3b82f6" fontSize={11} />
                   <Tooltip contentStyle={tooltipStyle} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Area yAxisId="l" type="monotone" dataKey="vwc_suelo" name="Humedad Suelo (%)" stroke="#3b82f6" fillOpacity={1} fill="url(#colorVwc)" />
-                  <Line yAxisId="r" type="monotone" dataKey="temp_suelo_30cm" name="Temp Suelo 30cm (°C)" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 2 }} />
+                  <Bar yAxisId="r" dataKey="precipitacion_mm" name="Lluvia (mm)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="l" type="monotone" dataKey="temp_media" name="Temp media (°C)" stroke="#f59e0b" strokeWidth={3} dot={{ r: 3 }} />
                 </ComposedChart>
               </ChartCard>
 
-              <ChartCard title="Análisis de Heladas Invernales y Horas Críticas">
+              <ChartCard title="Eventos de helada por mes">
                 <BarChart data={serie}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2a3a2c" vertical={false} />
                   <XAxis dataKey="periodo" stroke="#5d6f5a" fontSize={11} />
-                  <YAxis yAxisId="l" stroke="#22d3ee" fontSize={11} allowDecimals={false} />
-                  <YAxis yAxisId="r" orientation="right" stroke="#ef4444" fontSize={11} />
+                  <YAxis stroke="#22d3ee" fontSize={11} allowDecimals={false} />
                   <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar yAxisId="l" dataKey="eventos_helada" name="Noches con Helada" fill="#22d3ee" radius={[4, 4, 0, 0]} />
-                  <Line yAxisId="r" type="monotone" dataKey="temp_min_absoluta" name="Mín Absoluta (°C)" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
+                  <Bar dataKey="eventos_helada" name="Noches con helada" fill="#22d3ee" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ChartCard>
 
-              <ChartCard title="Balance Térmico: Grados-Día de Crecimiento Acumulados (GDD)" full>
+              <ChartCard title="Grados-día de crecimiento acumulados (GDD)" full>
                 <AreaChartGDD serie={serie} />
               </ChartCard>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              <ChartCard title="Microclima de Canopia: Diferencial Aire vs Canopia Diario">
+              <ChartCard title="Temperatura máxima y mínima diaria">
                 <LineChart data={serie}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2a3a2c" vertical={false} />
                   <XAxis dataKey="periodo" stroke="#5d6f5a" fontSize={10} />
                   <YAxis stroke="#f59e0b" fontSize={11} />
                   <Tooltip contentStyle={tooltipStyle} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="temp_max" name="Máx Atmosférica" stroke="#ef4444" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="temp_canopia_media" name="Canopia (SHT31)" stroke="#9bcc44" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="temp_min" name="Mín Atmosférica" stroke="#22d3ee" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="temp_max" name="Máxima (°C)" stroke="#ef4444" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="temp_min" name="Mínima (°C)" stroke="#22d3ee" strokeWidth={2} dot={false} />
                 </LineChart>
               </ChartCard>
 
-              <ChartCard title="Cinética de Maduración: Evolución de Azúcar vs Gestión Hídrica">
-                <ComposedChart data={serie}>
+              <ChartCard title="Evolución del azúcar (Brix medio)">
+                <LineChart data={serie}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2a3a2c" vertical={false} />
                   <XAxis dataKey="periodo" stroke="#5d6f5a" fontSize={10} />
-                  <YAxis yAxisId="l" stroke="#a21caf" fontSize={11} domain={[10, 28]} />
-                  <YAxis yAxisId="r" orientation="right" stroke="#3b82f6" fontSize={11} />
+                  <YAxis stroke="#a21caf" fontSize={11} domain={['auto', 'auto']} />
                   <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar yAxisId="r" dataKey="riego_litros" name="Riego Aplicado (L)" fill="#1e3a8a" opacity={0.6} radius={[2, 2, 0, 0]} />
-                  <Line yAxisId="l" type="monotone" dataKey="brix_medio" name="Grados Brix Medio" stroke="#a21caf" strokeWidth={3} dot={{ r: 3 }} />
-                </ComposedChart>
+                  <Line type="monotone" dataKey="brix_medio" name="Brix medio" stroke="#a21caf" strokeWidth={3} dot={{ r: 2 }} />
+                </LineChart>
               </ChartCard>
             </div>
           )}
@@ -169,7 +168,6 @@ export default function TabAnalisis() {
   );
 }
 
-// Sub-componentes estilizados de soporte
 function KpiCard({ title, value, desc, icon }) {
   return (
     <div className="bg-[#18211b] border border-[#2a3a2c]/50 rounded-xl p-4 flex items-start justify-between">
@@ -178,9 +176,7 @@ function KpiCard({ title, value, desc, icon }) {
         <span className="text-lg font-black tracking-tight text-white block">{value}</span>
         <span className="text-[10px] text-[#8a9787] block">{desc}</span>
       </div>
-      <div className="bg-[#121a14] p-2 rounded-lg border border-[#2a3a2c]/30">
-        {icon}
-      </div>
+      <div className="bg-[#121a14] p-2 rounded-lg border border-[#2a3a2c]/30">{icon}</div>
     </div>
   );
 }
@@ -192,24 +188,13 @@ function ChartCard({ title, children, full }) {
         <Calendar size={13} className="text-[#9bcc44]" /> {title}
       </h3>
       <div style={{ width: '100%', height: 280 }}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-          {children}
-        </ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>{children}</ResponsiveContainer>
       </div>
     </div>
   );
 }
 
-// Componente optimizado usando ComposedChart para blindar el renderizado de áreas vectoriales
 function AreaChartGDD({ serie }) {
-  if (!serie || serie.length === 0) {
-    return (
-      <div className="h-full flex items-center justify-center text-xs text-[#5d6f5a] font-mono border border-dashed border-[#2a3a2c] rounded-xl">
-        Alineando telemetría e índices GDD...
-      </div>
-    );
-  }
-
   return (
     <ComposedChart data={serie}>
       <defs>
@@ -222,7 +207,7 @@ function AreaChartGDD({ serie }) {
       <XAxis dataKey="periodo" stroke="#5d6f5a" fontSize={11} />
       <YAxis stroke="#9bcc44" fontSize={11} />
       <Tooltip contentStyle={tooltipStyle} />
-      <Area type="monotone" dataKey="gdd" name="GDD Acumulado" stroke="#9bcc44" strokeWidth={2.5} fill="url(#gdd)" />
+      <Area type="monotone" dataKey="gdd" name="GDD" stroke="#9bcc44" strokeWidth={2.5} fill="url(#gdd)" />
     </ComposedChart>
   );
 }
