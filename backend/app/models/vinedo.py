@@ -36,11 +36,16 @@ class VinedoStorage:
         vinedo_id = telemetry_data["vinedo_id"]
         if vinedo_id not in self._db:
             self._db[vinedo_id] = []
+
+        # IMPORTANTE: primero el spread de telemetry_data, y DESPUÉS los campos
+        # calculados. Así, si el nodo manda timestamp=null en el payload, NO pisa
+        # el timestamp bueno que generamos acá. (Antes el **telemetry_data iba
+        # último y sobrescribía timestamp con None -> timestamp:null en el front.)
         full_record = {
             "id": self._global_id_counter,
+            **telemetry_data,
             "timestamp": telemetry_data.get("timestamp") or datetime.utcnow(),
             "source": telemetry_data.get("source", "simulator"),
-            **telemetry_data,
             "alerta_helada": telemetry_data["temp_aire"] <= 2.0,
         }
         self._db[vinedo_id].append(full_record)

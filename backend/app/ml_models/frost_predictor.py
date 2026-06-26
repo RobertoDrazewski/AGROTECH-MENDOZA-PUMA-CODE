@@ -1,10 +1,12 @@
-"""Predictor de heladas: punto de rocío (Magnus-Tetens) + tendencia de enfriamiento."""
+"""Predictor de heladas: punto de rocío (Magnus-Tetens) + tendencia de
+enfriamiento calculada sobre tiempo real (°C/hora) con piso físico en el
+punto de rocío. Pensado para lecturas de alta frecuencia del nodo Heltec."""
 import math
+from datetime import datetime
 from app.core.config import settings
 
 
 def _temp(reg):
-    """Lectura robusta de temperatura cubriendo nombres del simulador y del hardware."""
     for k in ("temp_aire", "Temp_Aire_C", "temp_aire_c", "temperatura"):
         if reg.get(k) is not None:
             return float(reg[k])
@@ -18,13 +20,54 @@ def _hum(reg):
     return 60.0
 
 
+def _ts(reg):
+    """Timestamp como datetime, tolerante a None o string ISO."""
+    t = reg.get("timestamp") or reg.get("leido_en")
+    if isinstance(t, datetime):
+        return t
+    if isinstance(t, str):
+        try:
+            return datetime.fromisoformat(t.replace("Z", "+00:00"))
+        except Exception:
+            return None
+    return None
+
+
 class FrostPredictor:
+    # Hora local aproximada del amanecer (mínima diaria) en invierno mendocino.
+    DAWN_HOUR = 8
+
     @staticmethod
     def calculate_dew_point(temp_c: float, humidity_porc: float) -> float:
         a, b = 17.27, 237.7
         humidity_porc = max(0.1, min(100.0, humidity_porc))
         alpha = ((a * temp_c) / (b + temp_c)) + math.log(humidity_porc / 100.0)
         return float((b * alpha) / (a - alpha))
+
+    def _cooling_rate_per_hour(self, history: list) -> float:
+        """°C/hora de enfriamiento usando la ventana de tiempo real disponible.
+        Positivo = enfriándose. Si no hay timestamps usables, cae a un cálculo
+        por muestras como respaldo."""
+        # Tomamos hasta las últimas ~20 lecturas para suavizar ruido.
+        muestras = history[-20:] if len(history) >= 2 else history
+        t_ini, t_fin = _temp(muestras[0]), _temp(muestras[-1])
+        ts_ini, ts_fin = _ts(muestras[0]), _ts(muestras[-1])
+
+        if ts_ini and ts_fin:
+            horas = (ts_fin - ts_ini).total_seconds() / 3600.0
+            if horas >= 0.05:  # al menos ~3 min de ventana para que sea fiable
+                return (t_ini - t_fin) / horas  # baja temp -> valor positivo
+
+        # Respaldo sin timestamps: diferencia por muestra (poco fiable, acotado).
+        if len(muestras) >= 3:
+            return ((_temp(muestras[-3]) - t_fin) / 2.0)
+        return 0.0
+
+    def _horas_a_amanecer(self, ahora: datetime) -> float:
+        h = self.DAWN_HOUR - (ahora.hour + ahora.minute / 60.0)
+        if h <= 0:
+            h += 24
+        return h
 
     def predict_frost_risk(self, history: list) -> dict:
         if not history or len(history) < 3:
@@ -39,31 +82,45 @@ class FrostPredictor:
         h_current = _hum(history[-1])
         dew_point = self.calculate_dew_point(t_current, h_current)
 
-        t1, t2 = _temp(history[-2]), _temp(history[-3])
-        avg_cooling = ((t2 - t1) + (t1 - t_current)) / 2.0
-        projected_3h = t_current - (avg_cooling * 3)
+        cooling_per_h = self._cooling_rate_per_hour(history)
 
-        probability, risk, msg = 0.0, "LOW", "Condiciones estables en el viñedo."
+        # Proyección de la MÍNIMA al amanecer por enfriamiento radiativo, con
+        # piso físico en el punto de rocío (no suele caer mucho por debajo).
+        ahora = _ts(history[-1]) or datetime.utcnow()
+        horas_amanecer = self._horas_a_amanecer(ahora)
+        caida = t_current - (max(cooling_per_h, 0.0) * horas_amanecer)
+        projected_min = max(caida, dew_point)
 
-        if projected_3h <= settings.THRESHOLD_FROST_ALERT_C:
-            if dew_point <= 1.0:
+        umbral = settings.THRESHOLD_FROST_ALERT_C
+        probability, risk = 0.0, "LOW"
+        msg = "Condiciones estables en el viñedo."
+
+        # Tipo de helada según el punto de rocío (blanca vs negra).
+        if projected_min <= umbral:
+            helada_negra = dew_point < -2.0
+            if projected_min <= 0:
                 risk = "CRITICAL"
-                probability = 0.90 if projected_3h < 0 else 0.75
-                msg = (f"¡ALERTA MÁXIMA! Enfriamiento severo (-{avg_cooling:.1f}°C/h). "
-                       f"Punto de rocío peligroso ({dew_point:.1f}°C).")
+                probability = 0.90 if not helada_negra else 0.95
+                tipo = "HELADA NEGRA (aire seco, sin escarcha protectora)" if helada_negra \
+                    else "helada blanca probable"
+                msg = (f"¡ALERTA! Mínima proyectada al amanecer {projected_min:.1f}°C "
+                       f"(enfriando {cooling_per_h:.1f}°C/h). {tipo}.")
             else:
-                risk, probability = "MEDIUM", 0.50
-                msg = "Riesgo moderado. Descenso térmico detectado. Monitoree defensa pasiva."
+                risk, probability = "MEDIUM", 0.55
+                msg = (f"Riesgo moderado: mínima proyectada {projected_min:.1f}°C. "
+                       f"Monitoree y prepare defensa pasiva.")
 
-        if t_current <= settings.THRESHOLD_FROST_ALERT_C:
-            risk, probability = "CRITICAL", 0.95
-            msg = f"¡HELADA EN CURSO! Temperatura actual {t_current}°C bajo el umbral de seguridad."
+        # Override: si YA estamos bajo el umbral, es helada en curso.
+        if t_current <= umbral:
+            risk, probability = "CRITICAL", 0.97
+            msg = f"¡HELADA EN CURSO! Temperatura actual {t_current:.1f}°C bajo el umbral."
 
         return {
             "current_temp": round(t_current, 2),
             "dew_point": round(dew_point, 2),
-            "cooling_rate_c_per_hour": round(avg_cooling, 2),
-            "projected_temp_3h": round(projected_3h, 2),
+            "cooling_rate_c_per_hour": round(cooling_per_h, 2),
+            "hours_to_dawn": round(horas_amanecer, 1),
+            "projected_min_dawn": round(projected_min, 2),
             "risk_level": risk,
             "probability": probability,
             "message": msg,
