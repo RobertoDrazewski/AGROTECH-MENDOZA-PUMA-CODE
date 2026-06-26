@@ -2,9 +2,19 @@ import React, { useState, useEffect } from 'react';
 import apiService from '../../services/api';
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, ComposedChart, Area, AreaChart
+  CartesianGrid, Tooltip, Legend, ComposedChart, Area
 } from 'recharts';
 import { Loader2, Layers, Calendar, Thermometer, Droplet, Zap, ShieldAlert } from 'lucide-react';
+
+// Estilos globales de tooltips movidos arriba para evitar errores de hoisting en compilación
+const tooltipStyle = { 
+  backgroundColor: '#0e1512', 
+  border: '1px solid #2a3a2c', 
+  borderRadius: '12px', 
+  fontSize: '11px', 
+  color: '#cdd8c8',
+  fontFamily: 'monospace' 
+};
 
 export default function TabAnalisis() {
   const [vinedos, setVinedos] = useState([]);
@@ -16,7 +26,8 @@ export default function TabAnalisis() {
   useEffect(() => {
     apiService.getVinedos().then(v => {
       const safe = Array.isArray(v) ? v : [];
-      setVinedos(safe); if (safe.length) setSelected(safe[0]);
+      setVinedos(safe); 
+      if (safe.length) setSelected(safe[0]);
     }).catch(() => setLoading(false));
   }, []);
 
@@ -29,7 +40,13 @@ export default function TabAnalisis() {
       .finally(() => setLoading(false));
   }, [selected, periodo]);
 
-  const serie = data?.serie || [];
+  // NORMALIZACIÓN DEFENSIVA: Si el backend envía la métrica GDD con otro nombre, 
+  // la mapeamos acá para asegurar que Recharts siempre encuentre la propiedad 'gdd'.
+  const serie = (data?.serie || []).map(item => ({
+    ...item,
+    gdd: item.gdd ?? item.gdd_acumulado ?? item.grados_dia ?? 0
+  }));
+
   const resumen = data?.resumen || { gdd_total: 1420, noches_helada: 12, estres_hidrico_dias: 4, eficiencia_nodo: 99.4 };
 
   return (
@@ -132,7 +149,7 @@ export default function TabAnalisis() {
                 </LineChart>
               </ChartCard>
 
-              <ChartCard title="Cinética de Maduración: Evolución de Azúcar vs Gestión Hidrica">
+              <ChartCard title="Cinética de Maduración: Evolución de Azúcar vs Gestión Hídrica">
                 <ComposedChart data={serie}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2a3a2c" vertical={false} />
                   <XAxis dataKey="periodo" stroke="#5d6f5a" fontSize={10} />
@@ -153,15 +170,6 @@ export default function TabAnalisis() {
 }
 
 // Sub-componentes estilizados de soporte
-const tooltipStyle = { 
-  backgroundColor: '#0e1512', 
-  border: '1px solid #2a3a2c', 
-  borderRadius: '12px', 
-  fontSize: '11px', 
-  color: '#cdd8c8',
-  fontFamily: 'monospace' 
-};
-
 function KpiCard({ title, value, desc, icon }) {
   return (
     <div className="bg-[#18211b] border border-[#2a3a2c]/50 rounded-xl p-4 flex items-start justify-between">
@@ -192,9 +200,18 @@ function ChartCard({ title, children, full }) {
   );
 }
 
+// Componente optimizado usando ComposedChart para blindar el renderizado de áreas vectoriales
 function AreaChartGDD({ serie }) {
+  if (!serie || serie.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center text-xs text-[#5d6f5a] font-mono border border-dashed border-[#2a3a2c] rounded-xl">
+        Alineando telemetría e índices GDD...
+      </div>
+    );
+  }
+
   return (
-    <AreaChart data={serie}>
+    <ComposedChart data={serie}>
       <defs>
         <linearGradient id="gdd" x1="0" y1="0" x2="0" y2="1">
           <stop offset="5%" stopColor="#9bcc44" stopOpacity={0.3} />
@@ -206,6 +223,6 @@ function AreaChartGDD({ serie }) {
       <YAxis stroke="#9bcc44" fontSize={11} />
       <Tooltip contentStyle={tooltipStyle} />
       <Area type="monotone" dataKey="gdd" name="GDD Acumulado" stroke="#9bcc44" strokeWidth={2.5} fill="url(#gdd)" />
-    </AreaChart>
+    </ComposedChart>
   );
 }
