@@ -1,10 +1,10 @@
 import React from 'react';
-import { Thermometer, Droplets, Gauge, Shovel, Radio, FlaskConical, BrainCircuit, BatteryMedium } from 'lucide-react';
+import { Thermometer, Droplets, Gauge, Shovel, Radio, FlaskConical, BrainCircuit, BatteryMedium, Zap } from 'lucide-react';
 
 /**
  * MetricsGrid
  * - Distingue lecturas de SENSOR REAL (source: "hardware") vs DEMO (simulator)
- *   con un badge, para que en la ANR/bodega quede claro qué es dato físico.
+ * con un badge, para que en la ANR/bodega quede claro qué es dato físico.
  * - Muestra Brix/pH como "estimado (lab)" cuando el nodo real no los mide.
  * - Sexta tarjeta opcional: score de anomalía del Isolation Forest.
  * - Tarjeta de batería del nodo (solo si el hardware manda bateria_v).
@@ -83,16 +83,18 @@ export default function MetricsGrid({ currentData, anomaly }) {
 
   // Tarjeta de batería del nodo (solo si el hardware la manda)
   if (bateria_v !== null && bateria_v !== undefined) {
-    const pct = Math.max(0, Math.min(100, Math.round(((bateria_v - 3.3) / 0.9) * 100)));
-    const batLow = bateria_v < 3.5;
+    const isCharging = bateria_v >= 4.15; // Inferencia de conexión a cargador USB o panel solar a tope
+    const pct = isCharging ? 100 : Math.max(0, Math.min(100, Math.round(((bateria_v - 3.3) / 0.9) * 100)));
+    const batLow = bateria_v < 3.5 && !isCharging;
+    
     metrics.push({
-      title: "Batería del Nodo",
+      title: isCharging ? "Alimentación USB/Red" : "Batería del Nodo",
       value: `${Number(bateria_v).toFixed(2)} V · ${pct}%`,
-      icon: BatteryMedium,
-      iconColor: batLow ? "text-rose-400 animate-pulse" : "text-lime-400",
+      icon: isCharging ? Zap : BatteryMedium,
+      iconColor: isCharging ? "text-blue-400" : (batLow ? "text-rose-400 animate-pulse" : "text-lime-400"),
       borderColor: batLow ? "border-rose-500/40 shadow-lg shadow-rose-950/50" : "border-slate-800",
       bgGradient: batLow ? "from-rose-950/20 to-transparent" : "from-slate-900/50 to-transparent",
-      caption: batLow ? "Batería baja · revisar carga" : "Alimentación del nodo OK"
+      caption: isCharging ? "Nodo conectado a fuente externa" : (batLow ? "Batería baja · revisar carga" : "Alimentación del nodo OK")
     });
   }
 
