@@ -84,18 +84,28 @@ def analisis_historico(vinedo_id: str, periodo: str = "mensual"):
         hist = db_vinedos.get_history(vinedo_id, limit=720)
         by_day = {}
         for r in hist:
-            ts = r["timestamp"]
+            ts = r.get("timestamp")
+            if not ts:
+                continue
             day = ts.strftime("%d/%m") if hasattr(ts, "strftime") else str(ts)[:10]
             by_day.setdefault(day, []).append(r)
+        
         serie = []
         for day, regs in list(by_day.items())[-30:]:
-            temps = [x["temp_aire"] for x in regs]
-            brix = [x["uva_brix"] for x in regs]
+            # Filtro defensivo para datos reales del hardware
+            temps = [x.get("temp_aire") for x in regs if x.get("temp_aire") is not None]
+            brix = [x.get("uva_brix") for x in regs if x.get("uva_brix") is not None]
+            
+            temp_max = round(max(temps), 1) if temps else 0.0
+            temp_min = round(min(temps), 1) if temps else 0.0
+            brix_medio = round(sum(brix) / len(brix), 2) if brix else 0.0
+            heladas = sum(1 for x in regs if x.get("temp_aire") is not None and x.get("temp_aire") <= 2.0)
+            
             serie.append({
                 "periodo": day,
-                "temp_max": round(max(temps), 1),
-                "temp_min": round(min(temps), 1),
-                "brix_medio": round(sum(brix) / len(brix), 2),
-                "eventos_helada": sum(1 for x in regs if x["temp_aire"] <= 2.0),
+                "temp_max": temp_max,
+                "temp_min": temp_min,
+                "brix_medio": brix_medio,
+                "eventos_helada": heladas,
             })
         return {"vinedo_id": vinedo_id, "periodo": "mensual", "serie": serie}
