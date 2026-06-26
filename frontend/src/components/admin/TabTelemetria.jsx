@@ -5,10 +5,16 @@ import AlertPanel from '../dashboard/AlertPanel';
 import WeatherChart from '../dashboard/WeatherChart';
 import HarvestPredictor from '../dashboard/HarvestPredictor';
 import VineyardMap from '../maps/VineyardMap';
+import NasaComparison from '../dashboard/NasaComparison';
+import RealTimeFrostPhysics from '../dashboard/RealTimeFrostPhysics';
 import { Layers, WifiOff } from 'lucide-react';
 
 export default function TabTelemetria() {
-  const { vinedos, selected, setSelected, telemetry, frost, harvest, current, currentTemp, loading, error } = useDashboard(3000);
+  // Se agregó 'nasa' extraído del custom hook
+  const { 
+    vinedos, selected, setSelected, telemetry, frost, 
+    harvest, current, currentTemp, loading, error, nasa 
+  } = useDashboard(3000);
 
   return (
     <div className="space-y-6">
@@ -32,12 +38,25 @@ export default function TabTelemetria() {
         </div>
       )}
 
+      {/* Alertas Críticas (Isolation Forest / Predictor Backend) */}
       {frost && <AlertPanel frostPrediction={frost} />}
-      <MetricsGrid currentData={current} />
+      
+      {/* Grilla principal de sensores */}
+      <MetricsGrid currentData={current} anomaly={frost?.ml_anomaly} />
+      
+      {/* Fila analítica: Física en tiempo real y contraste satelital NASA */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RealTimeFrostPhysics currentData={current} />
+        <NasaComparison current={current} nasa={nasa} />
+      </div>
+
+      {/* Mapas y Gráficos Históricos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <VineyardMap vinedos={vinedos} selectedVinedo={selected} setSelectedVinedo={setSelected} currentTemp={currentTemp} />
         <WeatherChart telemetryHistory={telemetry} />
       </div>
+      
+      {/* Análisis de maduración y predicción de cosecha */}
       <HarvestPredictor harvestAnalysis={harvest} />
     </div>
   );

@@ -1,12 +1,11 @@
 import React from 'react';
-import { AlertTriangle, ShieldAlert, CloudSnow, CheckCircle, Flame } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, CheckCircle, Flame } from 'lucide-react';
 
 export default function AlertPanel({ frostPrediction }) {
   if (!frostPrediction) return null;
 
   const { risk_level, probability, message, cooling_rate_c_per_hour } = frostPrediction;
 
-  // Definición de estilos y configuraciones según el nivel de riesgo de la IA
   const config = {
     CRITICAL: {
       bgColor: "bg-red-950/40 border-red-500/40 from-red-950/30",
@@ -26,32 +25,32 @@ export default function AlertPanel({ frostPrediction }) {
     },
     LOW: {
       bgColor: "bg-emerald-950/20 border-emerald-500/20 from-emerald-950/10",
-      textColor: "text-emerald-300",
+      textColor: "text-emerald-200",
       iconColor: "text-emerald-400",
       icon: CheckCircle,
-      badge: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+      badge: "bg-emerald-500/20 text-emerald-400 border-emerald-500/40",
       actionButton: false
     }
   };
 
+  // Fallback a LOW si el backend envía algo inesperado
   const currentConfig = config[risk_level] || config.LOW;
-  const CurrentIcon = currentConfig.icon;
+  const Icon = currentConfig.icon;
 
-  // Función falsa para simular la mitigación (Defensa activa)
   const handleMitigationTrigger = () => {
-    alert("--> [IoT] Señal enviada vía LoRaWAN: Activando quemadores y aspersores en Cuartel Malbec 1.");
+    // Aquí conectás con el endpoint que acciona los relés de defensa activa
+    console.log("Comando enviado: Activando defensa de helada...");
   };
 
   return (
-    <div className={`w-full bg-gradient-to-r ${currentConfig.bgColor} to-slate-900/90 border backdrop-blur-md rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-500 shadow-xl`}>
-      
+    <div className={`bg-gradient-to-br ${currentConfig.bgColor} backdrop-blur-md border rounded-xl p-5 mb-4 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all duration-300`}>
       <div className="flex items-start gap-4">
-        <div className="mt-1 sm:mt-0">
-          <CurrentIcon className={`w-6 h-6 ${currentConfig.iconColor}`} />
+        <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800/50 shrink-0">
+          <Icon className={`w-8 h-8 ${currentConfig.iconColor}`} />
         </div>
         
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className={`text-sm font-bold ${currentConfig.textColor}`}>
               {risk_level === 'LOW' ? 'Sistema Protegido' : `Riesgo de Helada: ${risk_level}`}
             </span>
@@ -64,23 +63,21 @@ export default function AlertPanel({ frostPrediction }) {
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+          <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
             {message}
           </p>
         </div>
       </div>
 
-      {/* BOTÓN DE ACCIÓN: El gancho comercial absoluto del SaaS */}
       {currentConfig.actionButton && (
         <button
           onClick={handleMitigationTrigger}
-          className="w-full sm:w-auto bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold text-xs px-4 py-2.5 rounded-lg shadow-lg shadow-red-950/50 flex items-center justify-center gap-2 tracking-wider uppercase transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.98]"
+          className="w-full sm:w-auto bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold text-xs px-5 py-3 rounded-lg shadow-lg shadow-red-950/50 flex items-center justify-center gap-2 transition-all hover:scale-105 shrink-0"
         >
-          <Flame className="w-4 h-4 animate-bounce" />
-          Activar Defensa Pasiva
+          <Flame className="w-4 h-4" />
+          ACTIVAR DEFENSA
         </button>
       )}
-
     </div>
   );
 }

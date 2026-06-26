@@ -19,6 +19,7 @@ const apiService = {
   getAnomaliaML:        async (id) => (await api.get(`/analisis/anomalia/${id}`)).data,
   getHistorico:         async (id, periodo = 'mensual') => (await api.get(`/analisis/historico/${id}?periodo=${periodo}`)).data,
   getClima:             async (id) => (await api.get(`/clima/${id}`)).data,
+  getNasaData:          async (id) => (await api.get(`/nasa/${id}`)).data,
   getRiego:             async (id) => (await api.get(`/riego/${id}`)).data,
   getFitosanitario:     async (id) => (await api.get(`/fitosanitario/${id}`)).data,
   getModeloFito:        async () => (await api.get('/fitosanitario/modelo')).data,
