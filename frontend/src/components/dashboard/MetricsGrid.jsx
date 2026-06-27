@@ -13,7 +13,7 @@ const fmtVal = (v, unit, dec = 1) =>
   isNum(v) ? `${Number(v).toFixed(dec)} ${unit}` : `-- ${unit}`;
 
 /**
- * GaugeCard - Componente interno para renderizar el gráfico analógico
+ * GaugeCard - Gráfico analógico semicircular. Paleta verde de marca AgroTech.
  */
 const GaugeCard = ({ title, valueText, caption, icon: Icon, iconColor, percent, gaugeColor, alert, noData }) => {
   const radius = 40;
@@ -22,11 +22,11 @@ const GaugeCard = ({ title, valueText, caption, icon: Icon, iconColor, percent, 
   const strokeDashoffset = circumference - (safePercent / 100) * circumference;
 
   return (
-    <div className={`relative bg-gradient-to-br from-slate-900/80 to-slate-900/40 border ${alert ? 'border-rose-500/40 shadow-lg shadow-rose-950/50' : 'border-slate-800'} backdrop-blur-md rounded-xl p-5 flex flex-col justify-between transition-all duration-300 hover:scale-[1.02] hover:border-slate-700 overflow-hidden`}>
+    <div className={`relative bg-[#18211b] border ${alert ? 'border-rose-500/40 shadow-lg shadow-rose-950/40' : 'border-[#2a3a2c]/60'} backdrop-blur-md rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 hover:scale-[1.02] hover:border-[#3a4a3c] overflow-hidden`}>
       {alert && <div className="absolute inset-0 bg-rose-950/10 animate-pulse pointer-events-none" />}
 
       <div className="flex items-center justify-between mb-4 z-10">
-        <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
+        <span className="text-xs font-bold tracking-wider text-[#8a9787] uppercase">
           {title}
         </span>
         <Icon className={`w-5 h-5 ${iconColor}`} />
@@ -37,14 +37,14 @@ const GaugeCard = ({ title, valueText, caption, icon: Icon, iconColor, percent, 
           <path
             d="M 10 50 A 40 40 0 0 1 90 50"
             fill="none"
-            stroke="#1e293b"
+            stroke="#121a14"
             strokeWidth="10"
             strokeLinecap="round"
           />
           <path
             d="M 10 50 A 40 40 0 0 1 90 50"
             fill="none"
-            stroke={noData ? "#475569" : gaugeColor}
+            stroke={noData ? "#3a4a3c" : gaugeColor}
             strokeWidth="10"
             strokeLinecap="round"
             strokeDasharray={circumference}
@@ -54,14 +54,14 @@ const GaugeCard = ({ title, valueText, caption, icon: Icon, iconColor, percent, 
         </svg>
 
         <div className="absolute bottom-1 flex flex-col items-center">
-          <span className={`text-2xl font-bold tracking-tight drop-shadow-sm ${noData ? 'text-slate-500' : 'text-white'}`}>
+          <span className={`text-2xl font-black tracking-tight drop-shadow-sm ${noData ? 'text-[#5d6f5a]' : 'text-white'}`}>
             {valueText}
           </span>
         </div>
       </div>
 
       <div className="mt-4 text-center z-10">
-        <p className={`text-xs ${alert ? 'font-medium text-rose-400' : 'text-slate-400'}`}>
+        <p className={`text-xs ${alert ? 'font-medium text-rose-400' : 'text-[#8a9787]'}`}>
           {caption}
         </p>
       </div>
@@ -74,7 +74,7 @@ export default function MetricsGrid({ currentData, anomaly }) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-pulse">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-44 bg-slate-800/50 rounded-xl border border-slate-700/50"></div>
+          <div key={i} className="h-44 bg-[#18211b] rounded-2xl border border-[#2a3a2c]/50"></div>
         ))}
       </div>
     );
@@ -120,10 +120,9 @@ export default function MetricsGrid({ currentData, anomaly }) {
       valueText: fmtVal(presion_atm, "hPa", 0),
       noData: !isNum(presion_atm),
       icon: Gauge,
-      iconColor: "text-emerald-400",
-      gaugeColor: "#34d399",
-      // Rango para Mendoza (~750m, presión típica ~915 hPa). Antes 950-1050
-      // (nivel del mar) dejaba el gauge en 0% y no se pintaba.
+      iconColor: "text-[#9bcc44]",
+      gaugeColor: "#9bcc44",
+      // Rango para Mendoza (~750m, presión típica ~915 hPa).
       percent: calcPercent(presion_atm, 880, 940),
       alert: false,
       caption: !isNum(presion_atm) ? "Sensor en revisión" : "Estabilidad barométrica"
@@ -141,7 +140,6 @@ export default function MetricsGrid({ currentData, anomaly }) {
     }
   ];
 
-  // Quinta tarjeta: temp de suelo real
   if (isNum(temp_suelo)) {
     metrics.push({
       title: "Temperatura Suelo",
@@ -156,14 +154,13 @@ export default function MetricsGrid({ currentData, anomaly }) {
     });
   }
 
-  // Tarjeta de batería del nodo
   if (isNum(bateria_v)) {
     const isCharging = bateria_v >= 4.15;
     const pct = isCharging ? 100 : Math.max(0, Math.min(100, Math.round(((bateria_v - 3.3) / 0.9) * 100)));
 
     let batIcon = Zap;
-    let batColor = "text-emerald-400";
-    let batHex = "#34d399";
+    let batColor = "text-[#9bcc44]";
+    let batHex = "#9bcc44";
     let batAlert = false;
 
     if (!isCharging) {
@@ -196,7 +193,6 @@ export default function MetricsGrid({ currentData, anomaly }) {
     });
   }
 
-  // Tarjeta ML: score de anomalía del Isolation Forest
   if (anomaly && anomaly.disponible && isNum(anomaly.score_anomalia)) {
     const score = anomaly.score_anomalia;
     const anom = anomaly.es_anomalia;
@@ -217,13 +213,13 @@ export default function MetricsGrid({ currentData, anomaly }) {
     <div className="space-y-3">
       <div className="flex items-center gap-2 mb-4">
         {isHardware ? (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
-                           bg-lime-500/15 text-lime-400 border border-lime-500/30">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold
+                           bg-[#9bcc44]/15 text-[#9bcc44] border border-[#9bcc44]/30">
             <Radio className="w-3.5 h-3.5" /> Sensor real · nodo en campo
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
-                           bg-slate-700/40 text-slate-300 border border-slate-600/40">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold
+                           bg-[#121a14] text-[#8a9787] border border-[#2a3a2c]/60">
             <FlaskConical className="w-3.5 h-3.5" /> Datos de demostración
           </span>
         )}

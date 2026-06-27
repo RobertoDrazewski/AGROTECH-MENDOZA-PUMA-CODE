@@ -29,7 +29,7 @@ const GaugeCard = ({ title, valueText, caption, icon: Icon, iconColor, percent, 
   const strokeDashoffset = circumference - (percent / 100) * circumference;
 
   return (
-    <div className={`relative bg-gradient-to-br from-slate-900/80 to-slate-900/40 border ${alert ? 'border-rose-500/40 shadow-lg shadow-rose-950/50' : 'border-[#2a3a2c]/60'} backdrop-blur-md rounded-xl p-4 flex flex-col justify-between transition-all duration-300 hover:scale-[1.02] hover:border-[#9bcc44]/50 overflow-hidden`}>
+    <div className={`relative bg-[#18211b] border ${alert ? 'border-rose-500/40 shadow-lg shadow-rose-950/40' : 'border-[#2a3a2c]/60'} backdrop-blur-md rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 hover:scale-[1.02] hover:border-[#9bcc44]/50 overflow-hidden`}>
       {alert && <div className="absolute inset-0 bg-rose-950/10 animate-pulse pointer-events-none" />}
       
       <div className="flex items-center justify-between mb-3 z-10">
@@ -140,7 +140,7 @@ export default function TabHeladas() {
   const nasaGauges = nasa ? [
     { title: 'Temp', valueText: `${fmt(nasa.temp_aire)}°C`, icon: Thermometer, iconColor: 'text-indigo-400', gaugeColor: '#818cf8', percent: calcPercent(nasa.temp_aire, -5, 45), caption: 'Capa límite' },
     { title: 'Humedad', valueText: `${fmt(nasa.humedad_aire, 0)}%`, icon: Droplet, iconColor: 'text-indigo-400', gaugeColor: '#818cf8', percent: nasa.humedad_aire, caption: 'Relativa ambiental' },
-    { title: 'Presión', valueText: `${fmt(nasa.presion_atm, 0)} hPa`, icon: Layers, iconColor: 'text-indigo-400', gaugeColor: '#818cf8', percent: calcPercent(nasa.presion_atm, 950, 1050), caption: 'Superficie' },
+    { title: 'Presión', valueText: `${fmt(nasa.presion_atm, 0)} hPa`, icon: Layers, iconColor: 'text-indigo-400', gaugeColor: '#818cf8', percent: calcPercent(nasa.presion_atm, 880, 940), caption: 'Superficie' },
     { title: 'Pto. rocío', valueText: `${fmt(nasa.punto_rocio)}°C`, icon: CloudSnow, iconColor: 'text-indigo-400', gaugeColor: '#818cf8', percent: calcPercent(nasa.punto_rocio, -10, 25), caption: 'Saturación' },
   ] : [];
 
@@ -240,7 +240,7 @@ export default function TabHeladas() {
                 <div className="text-[11px] text-[#8a9787] mt-2 flex items-center gap-2 flex-wrap">
                   <span className="flex items-center gap-1"><Droplet className="w-3 h-3 text-blue-400" /> {d.humedad}%</span>
                   <span className="flex items-center gap-1"><CloudRain className="w-3 h-3 text-sky-400" /> {d.prob_lluvia}%</span>
-                  <span className="flex items-center gap-1"><Wind className="w-3 h-3 text-slate-400" /> {d.viento_kmh}</span>
+                  <span className="flex items-center gap-1"><Wind className="w-3 h-3 text-[#8a9787]" /> {d.viento_kmh}</span>
                 </div>
                 <div className="mt-3 space-y-1.5">
                   {(d.riesgos || []).length === 0 ? (
