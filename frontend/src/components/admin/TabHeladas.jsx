@@ -14,6 +14,61 @@ const RIESGO_STYLE = {
 
 const fmt = (v, d = 1) => (v === null || v === undefined ? '--' : Number(v).toFixed(d));
 
+// Helper para calcular porcentajes de los gauges
+const calcPercent = (val, min, max) => {
+  if (val === null || val === undefined) return 0;
+  return Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+};
+
+/**
+ * GaugeCard - Reutilizado para mantener el estilo analógico
+ */
+const GaugeCard = ({ title, valueText, caption, icon: Icon, iconColor, percent, gaugeColor, alert }) => {
+  const radius = 40;
+  const circumference = Math.PI * radius;
+  const strokeDashoffset = circumference - (percent / 100) * circumference;
+
+  return (
+    <div className={`relative bg-gradient-to-br from-slate-900/80 to-slate-900/40 border ${alert ? 'border-rose-500/40 shadow-lg shadow-rose-950/50' : 'border-[#2a3a2c]/60'} backdrop-blur-md rounded-xl p-4 flex flex-col justify-between transition-all duration-300 hover:scale-[1.02] hover:border-[#9bcc44]/50 overflow-hidden`}>
+      {alert && <div className="absolute inset-0 bg-rose-950/10 animate-pulse pointer-events-none" />}
+      
+      <div className="flex items-center justify-between mb-3 z-10">
+        <span className="text-[10px] font-bold tracking-wider text-[#5d6f5a] uppercase">
+          {title}
+        </span>
+        <Icon className={`w-4 h-4 ${iconColor}`} />
+      </div>
+
+      <div className="relative flex flex-col items-center justify-center my-1 z-10">
+        <svg viewBox="0 0 100 55" className="w-full max-w-[120px] drop-shadow-md">
+          <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#18211b" strokeWidth="10" strokeLinecap="round" />
+          <path 
+            d="M 10 50 A 40 40 0 0 1 90 50" 
+            fill="none" 
+            stroke={gaugeColor} 
+            strokeWidth="10" 
+            strokeLinecap="round" 
+            strokeDasharray={circumference} 
+            strokeDashoffset={strokeDashoffset} 
+            className="transition-all duration-1000 ease-out"
+          />
+        </svg>
+        <div className="absolute bottom-1 flex flex-col items-center">
+          <span className="text-xl font-black tracking-tight text-white drop-shadow-sm">
+            {valueText}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-3 text-center z-10">
+        <p className={`text-[10px] ${alert ? 'font-bold text-rose-400' : 'text-[#8a9787]'}`}>
+          {caption}
+        </p>
+      </div>
+    </div>
+  );
+};
+
 export default function TabHeladas() {
   const [vinedos, setVinedos] = useState([]);
   const [selected, setSelected] = useState('');
@@ -42,7 +97,6 @@ export default function TabHeladas() {
       .finally(() => setLoading(false));
   }, [selected]);
 
-  // Estilo del panel principal según el nivel de riesgo del backend
   const nivel = helada?.risk_level || 'LOW';
   const nivelCfg = {
     CRITICAL: { ring: 'border-rose-500/40 bg-rose-500/5', icon: ShieldAlert, ic: 'text-rose-400 animate-pulse', txt: 'text-rose-200', label: 'CRÍTICO' },
@@ -51,19 +105,43 @@ export default function TabHeladas() {
   }[nivel] || {};
   const NivelIcon = nivelCfg.icon || CheckCircle;
 
-  // Mínima proyectada: color según umbral de daño
   const pmin = helada?.projected_min_dawn;
-  const pminColor = pmin == null ? 'text-white'
-    : pmin <= 0 ? 'text-rose-300' : pmin <= 2 ? 'text-amber-300' : 'text-emerald-300';
+  const alertMin = pmin != null && pmin <= 2;
+  const pminColor = pmin == null ? 'text-white' : pmin <= 0 ? 'text-rose-400' : pmin <= 2 ? 'text-amber-400' : 'text-emerald-400';
+  const pminGaugeColor = pmin == null ? '#94a3b8' : pmin <= 0 ? '#fb7185' : pmin <= 2 ? '#fbbf24' : '#34d399';
 
-  // Helada negra: punto de rocío muy bajo (aire seco, sin escarcha protectora)
   const heladaNegra = helada?.dew_point != null && helada.dew_point < -2.0 && (pmin == null || pmin <= 2);
 
-  const celdas = helada ? [
-    { label: 'Temp actual', val: `${fmt(helada.current_temp)}°`, icon: Thermometer, color: 'text-cyan-300' },
-    { label: 'Punto rocío', val: `${fmt(helada.dew_point)}°`, icon: Droplet, color: 'text-sky-300' },
-    { label: 'Enfriam.', val: helada.cooling_rate_c_per_hour ? `-${fmt(helada.cooling_rate_c_per_hour)}°/h` : '--', icon: TrendingDown, color: 'text-amber-300' },
-    { label: 'Mín. amanecer', val: `${fmt(pmin)}°`, icon: Sunrise, color: pminColor },
+  // Configuración de Gauges para Predicción de Helada
+  const heladaGauges = helada ? [
+    { 
+      title: 'Temp actual', valueText: `${fmt(helada.current_temp)}°C`, icon: Thermometer, 
+      iconColor: 'text-cyan-400', gaugeColor: '#22d3ee', percent: calcPercent(helada.current_temp, -5, 40), 
+      alert: false, caption: 'Lectura base' 
+    },
+    { 
+      title: 'Punto rocío', valueText: `${fmt(helada.dew_point)}°C`, icon: Droplet, 
+      iconColor: 'text-sky-400', gaugeColor: '#38bdf8', percent: calcPercent(helada.dew_point, -10, 25), 
+      alert: helada.dew_point < 0, caption: 'Límite de enfriamiento' 
+    },
+    { 
+      title: 'Enfriamiento', valueText: helada.cooling_rate_c_per_hour ? `-${fmt(helada.cooling_rate_c_per_hour)}°/h` : '--', icon: TrendingDown, 
+      iconColor: 'text-amber-400', gaugeColor: '#fbbf24', percent: calcPercent(helada.cooling_rate_c_per_hour, 0, 5), 
+      alert: helada.cooling_rate_c_per_hour > 1.5, caption: 'Tasa radiativa' 
+    },
+    { 
+      title: 'Mín. amanecer', valueText: `${fmt(pmin)}°C`, icon: Sunrise, 
+      iconColor: pminColor, gaugeColor: pminGaugeColor, percent: calcPercent(pmin, -5, 20), 
+      alert: alertMin, caption: 'Proyección térmica' 
+    },
+  ] : [];
+
+  // Configuración de Gauges para NASA
+  const nasaGauges = nasa ? [
+    { title: 'Temp', valueText: `${fmt(nasa.temp_aire)}°C`, icon: Thermometer, iconColor: 'text-indigo-400', gaugeColor: '#818cf8', percent: calcPercent(nasa.temp_aire, -5, 45), caption: 'Capa límite' },
+    { title: 'Humedad', valueText: `${fmt(nasa.humedad_aire, 0)}%`, icon: Droplet, iconColor: 'text-indigo-400', gaugeColor: '#818cf8', percent: nasa.humedad_aire, caption: 'Relativa ambiental' },
+    { title: 'Presión', valueText: `${fmt(nasa.presion_atm, 0)} hPa`, icon: Layers, iconColor: 'text-indigo-400', gaugeColor: '#818cf8', percent: calcPercent(nasa.presion_atm, 950, 1050), caption: 'Superficie' },
+    { title: 'Pto. rocío', valueText: `${fmt(nasa.punto_rocio)}°C`, icon: CloudSnow, iconColor: 'text-indigo-400', gaugeColor: '#818cf8', percent: calcPercent(nasa.punto_rocio, -10, 25), caption: 'Saturación' },
   ] : [];
 
   return (
@@ -86,7 +164,7 @@ export default function TabHeladas() {
       {/* Panel principal de helada */}
       {helada && (
         <div className={`rounded-2xl border p-6 ${nivelCfg.ring}`}>
-          <div className="flex items-center gap-3 mb-4 flex-wrap">
+          <div className="flex items-center gap-3 mb-5 flex-wrap">
             <NivelIcon className={nivelCfg.ic} size={22} />
             <h3 className="text-sm font-black uppercase tracking-widest text-white">Predicción de helada · IA Local</h3>
             <span className={`ml-auto text-[10px] font-black uppercase px-3 py-1 rounded-full border ${nivelCfg.txt} border-current/30`}>
@@ -94,24 +172,15 @@ export default function TabHeladas() {
             </span>
           </div>
 
-          {/* Cuatro métricas accionables con íconos */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {celdas.map((c, i) => {
-              const Icon = c.icon;
-              return (
-                <div key={i} className="bg-[#121a14] border border-[#2a3a2c]/50 rounded-xl p-3">
-                  <p className="text-[10px] text-[#5d6f5a] font-bold uppercase flex items-center gap-1 mb-1">
-                    <Icon className="w-3 h-3" /> {c.label}
-                  </p>
-                  <p className={`text-xl font-black ${c.color}`}>{c.val}</p>
-                </div>
-              );
-            })}
+          {/* Grid de Gauges Analógicos */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {heladaGauges.map((gauge, i) => (
+              <GaugeCard key={i} {...gauge} />
+            ))}
           </div>
 
-          {/* Aviso de helada negra (la más peligrosa) */}
           {heladaNegra && (
-            <div className="mt-4 bg-fuchsia-950/30 border border-fuchsia-500/30 rounded-xl p-3 flex items-start gap-2.5">
+            <div className="mt-5 bg-fuchsia-950/30 border border-fuchsia-500/30 rounded-xl p-4 flex items-start gap-3">
               <Snowflake className="w-5 h-5 text-fuchsia-400 shrink-0 mt-0.5" />
               <p className="text-[11px] text-fuchsia-200 leading-relaxed">
                 <span className="font-black uppercase">Posible helada negra:</span> aire seco (punto de rocío {fmt(helada.dew_point)}°C).
@@ -120,11 +189,11 @@ export default function TabHeladas() {
             </div>
           )}
 
-          <p className="text-sm text-[#cdd8c8] italic mt-4 leading-relaxed">"{helada.message}"</p>
+          <p className="text-sm text-[#cdd8c8] italic mt-5 leading-relaxed">"{helada.message}"</p>
 
-          <p className="text-[10px] text-[#5d6f5a] mt-3 border-t border-[#2a3a2c]/50 pt-2 leading-relaxed">
+          <p className="text-[10px] text-[#5d6f5a] mt-4 border-t border-[#2a3a2c]/50 pt-3 leading-relaxed">
             Estimación por enfriamiento radiativo con piso en el punto de rocío. Vale para noche despejada y sin viento.
-            Es soporte a la decisión — cruzalo con el parte del SMN / Contingencias Mendoza.
+            Es soporte a la decisión — cruzalo con el parte del SMN / Contingencias.
           </p>
         </div>
       )}
@@ -132,42 +201,31 @@ export default function TabHeladas() {
       {/* Referencia satelital NASA */}
       {nasa?.disponible && (
         <div className="rounded-2xl border bg-gradient-to-br from-indigo-950/20 to-[#18211b] border-indigo-500/20 p-6">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-5">
             <Satellite className="text-indigo-400" size={20} />
             <h3 className="text-xs font-black uppercase tracking-widest text-white">Referencia satelital · NASA POWER</h3>
             <span className="ml-auto text-[10px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-1 rounded-full font-bold">
               hace {nasa.atraso_horas}h
             </span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { l: 'Temp', v: `${fmt(nasa.temp_aire)}°C`, icon: Thermometer },
-              { l: 'Humedad', v: `${fmt(nasa.humedad_aire, 0)}%`, icon: Droplet },
-              { l: 'Presión', v: `${fmt(nasa.presion_atm, 0)} hPa`, icon: Layers },
-              { l: 'Punto rocío', v: `${fmt(nasa.punto_rocio)}°C`, icon: CloudSnow },
-            ].map((x, i) => {
-              const Icon = x.icon;
-              return (
-                <div key={i} className="bg-indigo-950/20 border border-indigo-500/10 p-3 rounded-xl">
-                  <p className="text-[10px] text-indigo-300/80 font-bold uppercase flex items-center gap-1 mb-1">
-                    <Icon className="w-3 h-3" /> {x.l}
-                  </p>
-                  <p className="text-lg font-black text-white">{x.v}</p>
-                </div>
-              );
-            })}
+          
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {nasaGauges.map((gauge, i) => (
+              <GaugeCard key={i} {...gauge} />
+            ))}
           </div>
-          <p className="text-[10px] text-indigo-300/60 mt-3 italic">
+
+          <p className="text-[10px] text-indigo-300/60 mt-4 italic">
             Dato satelital de una celda de ~50 km. Sirve de referencia de zona; tu nodo mide el punto exacto en vivo.
           </p>
         </div>
       )}
 
-      {/* Pronóstico 5 días con chips de riesgo */}
+      {/* Pronóstico 5 días */}
       {loading ? (
         <div className="h-48 flex items-center justify-center"><Loader2 className="animate-spin text-[#9bcc44]" /></div>
       ) : clima && (
-        <div>
+        <div className="mt-6">
           <p className="text-[10px] uppercase tracking-widest text-[#5d6f5a] font-bold mb-3">
             Pronóstico 5 días · fuente: {clima.fuente}
           </p>
