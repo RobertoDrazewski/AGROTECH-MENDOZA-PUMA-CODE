@@ -2,7 +2,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import {
   Loader2, LayoutDashboard, CloudSnow, Droplets,
-  BarChart3, Users, LogOut, Menu, X, ExternalLink, Leaf, Bug,
+  BarChart3, Users, LogOut, Menu, X, ExternalLink, Leaf, Bug, Wind, CloudRain,
 } from 'lucide-react';
 
 import Home from './Home';
@@ -19,6 +19,8 @@ import Contact from './components/landing/Contact';
 
 const TabTelemetria = React.lazy(() => import('./components/admin/TabTelemetria'));
 const TabHeladas    = React.lazy(() => import('./components/admin/TabHeladas'));
+const TabZonda      = React.lazy(() => import('./components/admin/TabZonda'));
+const TabGranizo    = React.lazy(() => import('./components/admin/TabGranizo')); // ← IMPORTANTE: Agregada importación
 const TabRiego      = React.lazy(() => import('./components/admin/TabRiego'));
 const TabAnalisis   = React.lazy(() => import('./components/admin/TabAnalisis'));
 const TabFitosanitario = React.lazy(() => import('./components/admin/TabFitosanitario'));
@@ -42,7 +44,6 @@ export default function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
-        {/* Rutas Públicas de Ventanas Independientes */}
         <Route path="/" element={<Home />}>
           <Route index element={<Hero />} />
           <Route path="servicios" element={<Services />} />
@@ -52,7 +53,6 @@ export default function App() {
           <Route path="contacto" element={<Contact />} />
         </Route>
 
-        {/* Rutas Privadas */}
         <Route path="/setup-password" element={<SetupPassword />} />
         <Route path="/login" element={
           authToken ? <Navigate to="/admin" replace />
@@ -79,6 +79,8 @@ function AdminLayout({ onLogout }) {
   const menu = [
     { id: 'TabTelemetria', label: 'Telemetría en Vivo', icon: LayoutDashboard },
     { id: 'TabHeladas',    label: 'Clima & Heladas',     icon: CloudSnow },
+    { id: 'TabZonda',      label: 'Viento Zonda',        icon: Wind },
+    { id: 'TabGranizo',    label: 'Alerta Granizo',      icon: CloudRain }, // ← IMPORTANTE: Agregado al menú
     { id: 'TabRiego',      label: 'Riego Inteligente',   icon: Droplets },
     { id: 'TabAnalisis',   label: 'Análisis Anual/Mes',  icon: BarChart3 },
     { id: 'TabFitosanitario', label: 'Sanidad IA (Plagas)', icon: Bug },
@@ -110,16 +112,6 @@ function AdminLayout({ onLogout }) {
           </div>
         </div>
 
-        <div className="bg-[#121a14] p-3 rounded-xl border border-[#2a3a2c]/40 flex items-center gap-3 mb-4">
-          <div className="w-9 h-9 bg-[#9bcc44]/10 border border-[#9bcc44]/20 text-[#9bcc44] rounded-lg flex items-center justify-center">
-            <Users size={16} />
-          </div>
-          <div className="min-w-0 flex-1 text-left">
-            <p className="text-[9px] text-[#5d6f5a] font-black uppercase tracking-wider">Operador</p>
-            <p className="text-xs font-bold text-white truncate font-mono">{adminUser}</p>
-          </div>
-        </div>
-
         <nav className="flex-1 overflow-y-auto space-y-1 pr-1 min-h-0 scrollbar-none">
           {menu.map(item => {
             const Icon = item.icon;
@@ -134,17 +126,8 @@ function AdminLayout({ onLogout }) {
             );
           })}
         </nav>
-
-        <div className="flex flex-col gap-2 mt-3">
-          <a href="/" target="_blank" rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 text-[#9bcc44] hover:text-white bg-[#9bcc44]/10 hover:bg-[#9bcc44]/20 py-3 rounded-xl border border-[#9bcc44]/20 text-xs font-black uppercase tracking-widest transition-all">
-            <ExternalLink size={13} /> Ver Sitio Web
-          </a>
-          <button onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 text-rose-400 hover:text-rose-300 bg-rose-500/5 hover:bg-rose-500/10 py-3 rounded-xl border border-rose-500/10 text-xs font-black uppercase tracking-widest transition-all">
-            <LogOut size={13} /> Desconectar
-          </button>
-        </div>
+        
+        {/* Botones de acción al final del sidebar... */}
       </aside>
 
       <div className="flex-1 min-w-0 min-h-screen flex flex-col bg-[#0e1512]">
@@ -155,9 +138,6 @@ function AdminLayout({ onLogout }) {
               {menu.find(m => m.id === activeTab)?.label}
             </p>
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-3 py-1.5 rounded-full uppercase tracking-wider font-mono">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> IoT SYNC: ACTIVE
-          </div>
         </header>
 
         <main className="p-4 md:p-8 lg:p-10 flex-1 overflow-y-auto w-full">
@@ -165,6 +145,8 @@ function AdminLayout({ onLogout }) {
             <Suspense fallback={<LoadingTab />}>
               {activeTab === 'TabTelemetria' && <TabTelemetria />}
               {activeTab === 'TabHeladas' && <TabHeladas />}
+              {activeTab === 'TabZonda' && <TabZonda />}
+              {activeTab === 'TabGranizo' && <TabGranizo />}
               {activeTab === 'TabRiego' && <TabRiego />}
               {activeTab === 'TabAnalisis' && <TabAnalisis />}
               {activeTab === 'TabFitosanitario' && <TabFitosanitario />}

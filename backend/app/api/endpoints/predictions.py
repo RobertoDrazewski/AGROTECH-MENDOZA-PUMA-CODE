@@ -1,11 +1,13 @@
 from fastapi import APIRouter
 from app.models.vinedo import db_vinedos
 from app.ml_models.frost_predictor import FrostPredictor
+from app.ml_models.zonda_detector import ZondaDetector
 from app.ml_models.harvest_optimizer import HarvestOptimizer
 from app.ml_models.anomaly_detector import AnomalyDetector
 
 router = APIRouter(prefix="/analisis", tags=["Inteligencia Artificial"])
 frost = FrostPredictor()
+zonda = ZondaDetector()
 harvest = HarvestOptimizer()
 anomaly = AnomalyDetector()  # Isolation Forest entrenado con historico de Mendoza
 
@@ -38,6 +40,16 @@ def riesgo_helada(vinedo_id: str):
         fisico["motor"] = "fisico (ML no entrenado)"
 
     return fisico
+
+
+@router.get("/zonda/{vinedo_id}")
+def deteccion_zonda(vinedo_id: str):
+    """Detecta condiciones de Viento Zonda en curso mediante tasas de cambio termodinámico."""
+    historial = db_vinedos.get_history(vinedo_id, limit=180)
+    if not historial:
+        return {"risk_level": "LOW", "probability": 0.0, "message": "Sin lecturas suficientes."}
+    
+    return zonda.detect_zonda_risk(historial)
 
 
 @router.get("/anomalia/{vinedo_id}")

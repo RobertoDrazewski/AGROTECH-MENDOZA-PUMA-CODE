@@ -8,7 +8,9 @@ export default function useDashboard(pollMs = 3000) {
   const [frost, setFrost] = useState(null);
   const [harvest, setHarvest] = useState(null);
   const [anomaly, setAnomaly] = useState(null);
-  const [nasa, setNasa] = useState(null);      // ← NUEVO: Estado para datos NASA
+  const [nasa, setNasa] = useState(null);
+  const [zonda, setZonda] = useState(null);
+  const [clima, setClima] = useState(null); // ← NUEVO: Estado para riesgos de clima/granizo
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -20,7 +22,7 @@ export default function useDashboard(pollMs = 3000) {
         setVinedos(safe);
         if (safe.length) setSelected(safe[0]);
       } catch (e) {
-        setError('No se pudo conectar con el servidor de telemetría.');
+        setError('No se pudo conectar con el servidor.');
       } finally {
         setLoading(false);
       }
@@ -30,20 +32,23 @@ export default function useDashboard(pollMs = 3000) {
   const fetchAll = useCallback(async (id) => {
     if (!id) return;
     try {
-      // Agregamos getNasaData al Promise.all
-      const [h, f, c, a, n] = await Promise.all([
+      const [h, f, c, a, n, z, cl] = await Promise.all([
         apiService.getTelemetria(id, 24),
         apiService.getPrediccionHelada(id),
         apiService.getAnalisisCosecha(id),
         apiService.getAnomaliaML(id),
-        apiService.getNasaData(id),          // ← NUEVO: Llamada a la API de NASA
+        apiService.getNasaData(id),
+        apiService.getPrediccionZonda(id),
+        apiService.getClima(id), // ← NUEVO: Obtenemos pronóstico y riesgos
       ]);
       
       setTelemetry(Array.isArray(h) ? h : []);
       setFrost(f || null);
       setHarvest(c || null);
       setAnomaly(a || null);
-      setNasa(n || null);                    // ← NUEVO: Actualizamos el estado de NASA
+      setNasa(n || null);
+      setZonda(z || null);
+      setClima(cl || null); // ← NUEVO
       setError(null);
     } catch (e) {
       setError('Error actualizando datos de sensores.');
@@ -57,9 +62,5 @@ export default function useDashboard(pollMs = 3000) {
     return () => clearInterval(iv);
   }, [selected, fetchAll, pollMs]);
 
-  const current = telemetry.length ? telemetry[telemetry.length - 1] : null;
-  const currentTemp = current ? (current.temp_aire ?? current.Temp_Aire_C ?? 12) : 12;
-
-  // Retornamos 'nasa' para que el componente TabTelemetria pueda usarlo
-  return { vinedos, selected, setSelected, telemetry, frost, harvest, anomaly, nasa, current, currentTemp, loading, error };
+  return { vinedos, selected, setSelected, telemetry, frost, harvest, anomaly, nasa, zonda, clima, loading, error };
 }

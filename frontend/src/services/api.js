@@ -23,6 +23,7 @@ const apiService = {
   getRiego:             async (id) => (await api.get(`/riego/${id}`)).data,
   getFitosanitario:     async (id) => (await api.get(`/fitosanitario/${id}`)).data,
   getModeloFito:        async () => (await api.get('/fitosanitario/modelo')).data,
+  getPrediccionZonda: (id) => api.get(`/analisis/zonda/${id}`).then(res => res.data),
   // --- Trampas físicas (nodos ESP32-CAM) ---
   getTrampasFisicas:    async () => (await api.get('/fitosanitario/trampas-fisicas')).data,
   getTrampaFisica:      async (trapId) => (await api.get(`/fitosanitario/trampa/${trapId}`)).data,
@@ -38,6 +39,7 @@ const apiService = {
   setupPassword:        async (email, password) => (await api.post('/auth/setup-password', { email, password })).data,
   invite:               async (nombre, email) => (await api.post('/auth/invite', { nombre, email })).data,
   getAdmins:            async () => (await api.get('/auth/admins')).data,
+  
 };
 
 export default apiService;
