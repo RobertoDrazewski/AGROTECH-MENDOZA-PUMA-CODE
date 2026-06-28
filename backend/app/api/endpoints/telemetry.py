@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from app.models.vinedo import db_vinedos
 from app.schemas.telemetry import TelemetryCreate
 
@@ -31,13 +31,25 @@ def guardar_geocerca(vinedo_id: str, puntos: list[dict]):
 
 
 @router.post("/ingest")
-def ingestar_telemetria_real(payload: TelemetryCreate):
+async def ingestar_telemetria_real(payload: TelemetryCreate, request: Request):
     """Endpoint que usa el nodo Heltec Wireless Tracker.
     El nodo hace POST por WiFi directo (etapa de banco/patio) o via gateway
     LoRa (etapa de finca). Si trae lat/lon GPS y el cuartel no existe todavia,
     se registra automaticamente como nodo real — asi sale solo el 'Patio_Test'
     la primera vez que el nodo de tu casa reporta su posicion."""
     data = payload.model_dump(mode="json")
+
+    # --- DIAG BMP (temporal): leer los campos diag_ del body CRUDO ---
+    # No estan en el schema TelemetryCreate, asi que FastAPI los descarta.
+    # Los leemos del request crudo y los devolvemos como eco en la respuesta
+    # (NO se guardan en la DB). Sirve para diagnosticar el BMP280 por WiFi.
+    diag = {}
+    try:
+        raw = await request.json()
+        diag = {k: v for k, v in raw.items() if k.startswith("diag_")}
+    except Exception:
+        pass
+    # -----------------------------------------------------------------
 
     # Auto-registro / refinamiento de posicion a partir del GPS del nodo
     if data.get("lat") is not None and data.get("lon") is not None:
@@ -68,13 +80,17 @@ def ingestar_telemetria_real(payload: TelemetryCreate):
     except Exception as e:
         print(f"--> [INGEST] No se pudo persistir en MySQL (sigo OK): {e}")
 
-    return {
+    resp = {
         "status": "ok",
         "id": rec["id"],
         "vinedo_id": rec["vinedo_id"],
         "source": rec.get("source"),
         "alerta_helada": rec.get("alerta_helada"),
     }
+    # Eco del diagnostico del BMP, si el nodo lo mando (temporal).
+    if diag:
+        resp["diag_bmp"] = diag
+    return resp
 
 
 @router.get("/{vinedo_id}")
