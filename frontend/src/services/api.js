@@ -19,11 +19,16 @@ const apiService = {
   getAnomaliaML:        async (id) => (await api.get(`/analisis/anomalia/${id}`)).data,
   getHistorico:         async (id, periodo = 'mensual') => (await api.get(`/analisis/historico/${id}?periodo=${periodo}`)).data,
   getClima:             async (id) => (await api.get(`/clima/${id}`)).data,
+  // --- Detector de Zonda local (faltaba: TabZonda lo llamaba y no existia) ---
+  getPrediccionZonda:   async (id) => (await api.get(`/analisis/zonda/${id}`)).data,
+  // --- Alertas oficiales SMN (Sistema de Alerta Temprana) ---
+  getAlertasSMN:        async () => (await api.get('/smn/alertas')).data,
+  getGranizoSMN:        async () => (await api.get('/smn/granizo')).data,
+  getZondaSMN:          async () => (await api.get('/smn/zonda')).data,
   getNasaData:          async (id) => (await api.get(`/nasa/${id}`)).data,
   getRiego:             async (id) => (await api.get(`/riego/${id}`)).data,
   getFitosanitario:     async (id) => (await api.get(`/fitosanitario/${id}`)).data,
   getModeloFito:        async () => (await api.get('/fitosanitario/modelo')).data,
-  getPrediccionZonda: (id) => api.get(`/analisis/zonda/${id}`).then(res => res.data),
   // --- Trampas físicas (nodos ESP32-CAM) ---
   getTrampasFisicas:    async () => (await api.get('/fitosanitario/trampas-fisicas')).data,
   getTrampaFisica:      async (trapId) => (await api.get(`/fitosanitario/trampa/${trapId}`)).data,
@@ -39,7 +44,6 @@ const apiService = {
   setupPassword:        async (email, password) => (await api.post('/auth/setup-password', { email, password })).data,
   invite:               async (nombre, email) => (await api.post('/auth/invite', { nombre, email })).data,
   getAdmins:            async () => (await api.get('/auth/admins')).data,
-  
 };
 
 export default apiService;
