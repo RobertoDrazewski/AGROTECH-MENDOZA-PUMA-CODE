@@ -19,12 +19,8 @@ const apiService = {
   getAnomaliaML:        async (id) => (await api.get(`/analisis/anomalia/${id}`)).data,
   getHistorico:         async (id, periodo = 'mensual') => (await api.get(`/analisis/historico/${id}?periodo=${periodo}`)).data,
   getClima:             async (id) => (await api.get(`/clima/${id}`)).data,
-  // --- Detector de Zonda local (faltaba: TabZonda lo llamaba y no existia) ---
+  // Detector de Zonda local por sensores (lo usa TabZonda)
   getPrediccionZonda:   async (id) => (await api.get(`/analisis/zonda/${id}`)).data,
-  // --- Alertas oficiales SMN (Sistema de Alerta Temprana) ---
-  getAlertasSMN:        async () => (await api.get('/smn/alertas')).data,
-  getGranizoSMN:        async () => (await api.get('/smn/granizo')).data,
-  getZondaSMN:          async () => (await api.get('/smn/zonda')).data,
   getNasaData:          async (id) => (await api.get(`/nasa/${id}`)).data,
   getRiego:             async (id) => (await api.get(`/riego/${id}`)).data,
   getFitosanitario:     async (id) => (await api.get(`/fitosanitario/${id}`)).data,
