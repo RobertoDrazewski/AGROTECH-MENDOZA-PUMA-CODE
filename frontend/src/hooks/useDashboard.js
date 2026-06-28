@@ -10,7 +10,7 @@ export default function useDashboard(pollMs = 3000) {
   const [anomaly, setAnomaly] = useState(null);
   const [nasa, setNasa] = useState(null);
   const [zonda, setZonda] = useState(null);
-  const [clima, setClima] = useState(null); // ← NUEVO: Estado para riesgos de clima/granizo
+  const [clima, setClima] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -31,28 +31,29 @@ export default function useDashboard(pollMs = 3000) {
 
   const fetchAll = useCallback(async (id) => {
     if (!id) return;
-    try {
-      const [h, f, c, a, n, z, cl] = await Promise.all([
-        apiService.getTelemetria(id, 24),
-        apiService.getPrediccionHelada(id),
-        apiService.getAnalisisCosecha(id),
-        apiService.getAnomaliaML(id),
-        apiService.getNasaData(id),
-        apiService.getPrediccionZonda(id),
-        apiService.getClima(id), // ← NUEVO: Obtenemos pronóstico y riesgos
-      ]);
-      
-      setTelemetry(Array.isArray(h) ? h : []);
-      setFrost(f || null);
-      setHarvest(c || null);
-      setAnomaly(a || null);
-      setNasa(n || null);
-      setZonda(z || null);
-      setClima(cl || null); // ← NUEVO
-      setError(null);
-    } catch (e) {
-      setError('Error actualizando datos de sensores.');
-    }
+    
+    // Usamos allSettled para que si un endpoint falla, no rompa toda la carga
+    const results = await Promise.allSettled([
+      apiService.getTelemetria(id, 24),    // 0
+      apiService.getPrediccionHelada(id),  // 1
+      apiService.getAnalisisCosecha(id),   // 2
+      apiService.getAnomaliaML(id),        // 3
+      apiService.getNasaData(id),          // 4
+      apiService.getPrediccionZonda(id),   // 5
+      apiService.getClima(id),             // 6
+    ]);
+
+    // Función auxiliar para obtener datos solo si la promesa fue exitosa
+    const getData = (index) => results[index].status === 'fulfilled' ? results[index].value : null;
+
+    setTelemetry(getData(0) || []);
+    setFrost(getData(1));
+    setHarvest(getData(2));
+    setAnomaly(getData(3));
+    setNasa(getData(4));
+    setZonda(getData(5));
+    setClima(getData(6));
+    
   }, []);
 
   useEffect(() => {
@@ -62,5 +63,8 @@ export default function useDashboard(pollMs = 3000) {
     return () => clearInterval(iv);
   }, [selected, fetchAll, pollMs]);
 
-  return { vinedos, selected, setSelected, telemetry, frost, harvest, anomaly, nasa, zonda, clima, loading, error };
+  const current = telemetry.length ? telemetry[telemetry.length - 1] : null;
+  const currentTemp = current ? (current.temp_aire ?? current.Temp_Aire_C ?? 12) : 12;
+
+  return { vinedos, selected, setSelected, telemetry, frost, harvest, anomaly, nasa, zonda, clima, current, currentTemp, loading, error };
 }
