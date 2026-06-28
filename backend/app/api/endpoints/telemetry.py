@@ -47,6 +47,9 @@ async def ingestar_telemetria_real(payload: TelemetryCreate, request: Request):
     try:
         raw = await request.json()
         diag = {k: v for k, v in raw.items() if k.startswith("diag_")}
+        if diag:
+            # Aparece en los logs de Railway con cada POST del nodo real.
+            print(f"--> [DIAG BMP] {data.get('vinedo_id')}: {diag}")
     except Exception:
         pass
     # -----------------------------------------------------------------
