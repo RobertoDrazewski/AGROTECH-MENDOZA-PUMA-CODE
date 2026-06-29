@@ -2,7 +2,7 @@
 Reemplaza la configuración SMTP para evadir el bloqueo de puertos de Render.
 Variables de entorno requeridas:
   RESEND_API_KEY      = (Configurada en el archivo .env)
-  EMAIL_INFO          = info@puma-code.com
+  EMAIL_INFO          = info@agrotech-pumacode.com.ar (Debe coincidir con el dominio verificado)
 """
 import json
 import urllib.request
@@ -20,7 +20,7 @@ def send_mail(to, subject: str, html: str, reply_to: str | None = None) -> bool:
 
     recipients = [to] if isinstance(to, str) else list(to)
     
-    # 2. El remitente debe usar el dominio que verificaste en Resend (ej: info@puma-code.com)
+    # 2. El remitente debe usar el dominio que verificaste en Resend (ej: info@agrotech-pumacode.com.ar)
     sender = f"AgroTech Mendoza <{settings.EMAIL_INFO}>"
     
     # 3. Construimos el cuerpo de la petición para Resend
@@ -30,12 +30,14 @@ def send_mail(to, subject: str, html: str, reply_to: str | None = None) -> bool:
         "subject": subject,
         "html": html
     }
+    
+    # Aseguramos que las respuestas vayan a la empresa si no se especifica otro
     if reply_to:
         payload["reply_to"] = reply_to
     elif getattr(settings, "EMAIL_REPLYTO", None):
-        # Por defecto, las respuestas van a la casilla real (ej: info@puma-code.com)
-        # aunque el envio salga desde el dominio verificado de AgroTech.
         payload["reply_to"] = settings.EMAIL_REPLYTO
+    else:
+        payload["reply_to"] = "info@puma-code.com"
 
     data = json.dumps(payload).encode('utf-8')
     

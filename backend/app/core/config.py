@@ -40,9 +40,16 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str | None = Field(default=None, validation_alias="RESEND_API_KEY")
     GMAIL_USER: str = Field(default="info@puma-code.com", validation_alias="GMAIL_USER")
     GMAIL_APP_PASSWORD: str | None = Field(default=None, validation_alias="GMAIL_APP_PASSWORD")
+    
+    # EMAIL_INFO = Remitente. DEBE ser el dominio verificado en esta cuenta de Resend
     EMAIL_INFO: str = Field(default="info@agrotech-pumacode.com.ar", validation_alias="EMAIL_INFO")
     EMAIL_SECURITY: str = Field(default="security@puma-code.com", validation_alias="EMAIL_SECURITY")
-    EMAIL_REPLYTO: str | None = Field(default=None, validation_alias="EMAIL_REPLYTO")
+    
+    # EMAIL_REPLYTO = Donde van a llegar las respuestas de los clientes
+    EMAIL_REPLYTO: str | None = Field(default="info@puma-code.com", validation_alias="EMAIL_REPLYTO")
+    
+    # EMAIL_DESTINATION = Correo destino por defecto para notificaciones internas del sistema hacia vos
+    EMAIL_DESTINATION: str = Field(default="info@puma-code.com", validation_alias="EMAIL_DESTINATION")
 
     # Dólar / financiación (para el presupuesto)
     DOLAR_TIPO: str = Field(default="blue", validation_alias="DOLAR_TIPO")
