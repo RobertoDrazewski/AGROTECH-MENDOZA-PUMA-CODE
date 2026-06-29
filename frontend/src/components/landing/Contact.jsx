@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Send, CheckCircle2, Loader2, Cpu, MessageCircle } from 'lucide-react';
+import { Mail, CheckCircle2, Loader2, MessageCircle } from 'lucide-react';
 import apiService from '../../services/api';
 
 const EMAIL_INFO = 'info@puma-code.com';
@@ -78,20 +78,51 @@ export default function Contact() {
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="grid md:grid-cols-2 gap-4">
-                  <input required placeholder="Nombre" className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent" 
-                    onChange={e => setForm({...form, nombre: e.target.value})} />
-                  <input required placeholder="Bodega" className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
-                    onChange={e => setForm({...form, bodega: e.target.value})} />
+                  <input 
+                    required 
+                    name="nombre"
+                    value={form.nombre}
+                    placeholder="Nombre" 
+                    className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent" 
+                    onChange={e => setForm({...form, nombre: e.target.value})} 
+                  />
+                  <input 
+                    name="bodega"
+                    value={form.bodega}
+                    placeholder="Bodega / Finca (Opcional)" 
+                    className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
+                    onChange={e => setForm({...form, bodega: e.target.value})} 
+                  />
                 </div>
-                <input required type="email" placeholder="Email" className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
-                  onChange={e => setForm({...form, email: e.target.value})} />
-                <input required type="tel" placeholder="Teléfono" className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
-                  onChange={e => setForm({...form, telefono: e.target.value})} />
-                <textarea required placeholder="Mensaje" rows={4} className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
-                  onChange={e => setForm({...form, mensaje: e.target.value})} />
+                <input 
+                  required 
+                  type="email" 
+                  name="email"
+                  value={form.email}
+                  placeholder="Email" 
+                  className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
+                  onChange={e => setForm({...form, email: e.target.value})} 
+                />
+                <input 
+                  type="tel" 
+                  name="telefono"
+                  value={form.telefono}
+                  placeholder="Teléfono (Opcional)" 
+                  className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
+                  onChange={e => setForm({...form, telefono: e.target.value})} 
+                />
+                <textarea 
+                  required 
+                  name="mensaje"
+                  value={form.mensaje}
+                  placeholder="Mensaje" 
+                  rows={4} 
+                  className="bg-[#121a14] p-4 rounded-2xl text-white outline-none focus:border-[#9bcc44] border-2 border-transparent"
+                  onChange={e => setForm({...form, mensaje: e.target.value})} 
+                />
                 
                 <button type="submit" disabled={sending}
-                  className="w-full bg-[#9bcc44] text-[#0e1512] py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white transition-all">
+                  className="w-full bg-[#9bcc44] text-[#0e1512] py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                   {sending ? <Loader2 className="animate-spin mx-auto" /> : "Enviar consulta"}
                 </button>
               </form>
