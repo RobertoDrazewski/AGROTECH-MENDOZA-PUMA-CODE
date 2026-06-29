@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     GMAIL_APP_PASSWORD: str | None = Field(default=None, validation_alias="GMAIL_APP_PASSWORD")
     EMAIL_INFO: str = Field(default="info@puma-code.com", validation_alias="EMAIL_INFO")
     EMAIL_SECURITY: str = Field(default="security@puma-code.com", validation_alias="EMAIL_SECURITY")
+    EMAIL_REPLYTO: str | None = Field(default=None, validation_alias="EMAIL_REPLYTO")
 
     # Dólar / financiación (para el presupuesto)
     DOLAR_TIPO: str = Field(default="blue", validation_alias="DOLAR_TIPO")

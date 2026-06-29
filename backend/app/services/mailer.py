@@ -32,6 +32,10 @@ def send_mail(to, subject: str, html: str, reply_to: str | None = None) -> bool:
     }
     if reply_to:
         payload["reply_to"] = reply_to
+    elif getattr(settings, "EMAIL_REPLYTO", None):
+        # Por defecto, las respuestas van a la casilla real (ej: info@puma-code.com)
+        # aunque el envio salga desde el dominio verificado de AgroTech.
+        payload["reply_to"] = settings.EMAIL_REPLYTO
 
     data = json.dumps(payload).encode('utf-8')
     
