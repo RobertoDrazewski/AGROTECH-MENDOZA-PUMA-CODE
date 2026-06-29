@@ -78,7 +78,9 @@ def contacto(body: ContactoIn):
         <p style="margin:20px 0 0;text-align:center;color:#9ca3af;font-size:11px;">AgroTech Mendoza · Agricultura de precisión · Mendoza, Argentina — info@puma-code.com</p>
       </div>
     </div>"""
-    enviado = send_mail(settings.EMAIL_INFO, f"🍇 Consulta AgroTech · {body.nombre}",
+    
+    # CORRECCIÓN: El correo se envía a EMAIL_DESTINATION (info@puma-code.com)
+    enviado = send_mail(settings.EMAIL_DESTINATION, f"🍇 Consulta AgroTech · {body.nombre}",
                         htmlmail, reply_to=body.email)
     return {"success": True, "email_enviado": enviado}
 
@@ -156,7 +158,8 @@ def presupuesto(body: PresupuestoIn):
       </div>
     </div>"""
 
-    enviado = send_mail(settings.EMAIL_INFO,
+    # CORRECCIÓN: El correo se envía a EMAIL_DESTINATION (info@puma-code.com)
+    enviado = send_mail(settings.EMAIL_DESTINATION,
                         f"📤 Solicitud de presupuesto AgroTech · {name}"
                         + (f" · {bodega}" if bodega else ""),
                         mail_html, reply_to=email)
