@@ -1,3 +1,4 @@
+import eval_type_backport; eval_type_backport.init()
 """AgroTech Mendoza by puma-code.com — API (FastAPI)."""
 import threading
 import time

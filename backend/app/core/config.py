@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Optional
 """Configuración central de AgroTech Mendoza by puma-code.com"""
 from pydantic_settings import BaseSettings
 from pydantic import Field
@@ -29,7 +31,7 @@ class Settings(BaseSettings):
     THRESHOLD_HEAT_STRESS_C: float = 35.0
 
     # Base de datos (Railway MySQL). Formato: mysql+pymysql://user:pass@host:port/db
-    DATABASE_URL: str | None = Field(default=None, validation_alias="DATABASE_URL")
+    DATABASE_URL: Optional[str] = Field(default=None, validation_alias="DATABASE_URL")
 
     # Integraciones externas
     OPENWEATHER_API_KEY: str | None = Field(default=None, validation_alias="OPENWEATHER_API_KEY")
