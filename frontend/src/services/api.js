@@ -37,9 +37,15 @@ const apiService = {
   pedirPresupuesto:     async (chatHistory, userData) => (await api.post('/presupuesto', { chatHistory, userData })).data,
   // Auth
   login:                async (username, password) => (await api.post('/auth/login', { username, password })).data,
+  me:                   async () => (await api.get('/auth/me')).data,
   setupPassword:        async (email, password) => (await api.post('/auth/setup-password', { email, password })).data,
   invite:               async (nombre, email) => (await api.post('/auth/invite', { nombre, email })).data,
   getAdmins:            async () => (await api.get('/auth/admins')).data,
+  // Alarmas (campanita del panel)
+  escanearAlarmas:      async () => (await api.get('/alarmas/scan')).data,
+  getAlarmasHistorico:  async (limit = 50) => (await api.get(`/alarmas?limit=${limit}`)).data,
+  // Carga manual de Brix por cuartel
+  registrarBrixManual:  async (id, data) => (await api.post(`/telemetria/${id}/brix-manual`, data)).data,
 };
 
 export default apiService;

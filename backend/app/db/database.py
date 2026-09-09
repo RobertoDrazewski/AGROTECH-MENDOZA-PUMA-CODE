@@ -59,6 +59,7 @@ def save_telemetry_db(records):
                 lon=r.get("lon"),
                 rssi=r.get("rssi"),
                 alerta_helada=bool((r.get("temp_aire") or 99) <= 2.0),
+                observacion=r.get("observacion"),
             ))
         s.commit()
     finally:
@@ -97,3 +98,19 @@ def cuarteles_con_datos_nasa():
     except Exception as e:
         print(f"--> [DB] No se pudo listar cuarteles con datos NASA: {e}")
         return set()
+
+
+def ya_hay_brix_2026_seed():
+    """True si ya se sembraron las lecturas manuales simuladas de Brix 2026
+    (retrocarga de 1 lectura por mes). Evita duplicar filas en cada reinicio."""
+    from sqlalchemy import text
+    try:
+        eng = get_engine()
+        with eng.connect() as conn:
+            n = conn.execute(text(
+                "SELECT COUNT(*) FROM telemetria WHERE source = 'manual_2026_seed'"
+            )).scalar()
+        return (n or 0) > 0
+    except Exception as e:
+        print(f"--> [DB] No se pudo verificar semilla de Brix 2026: {e}")
+        return True

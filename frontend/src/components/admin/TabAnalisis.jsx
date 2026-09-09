@@ -229,7 +229,19 @@ export default function TabAnalisis() {
               </ChartCard>
 
               <ChartCard title="Grados-día de crecimiento acumulados (GDD)" full>
-                <AreaChartGDD serie={serie} />
+                <ComposedChart data={serie}>
+                  <defs>
+                    <linearGradient id="gdd" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#9bcc44" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#9bcc44" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2a3a2c" vertical={false} />
+                  <XAxis dataKey="periodo" stroke="#5d6f5a" fontSize={10} tickMargin={8} />
+                  <YAxis stroke="#9bcc44" fontSize={10} tickMargin={8} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Area type="monotone" dataKey="gdd" name="GDD" stroke="#9bcc44" strokeWidth={3} fill="url(#gdd)" />
+                </ComposedChart>
               </ChartCard>
             </div>
           ) : (
@@ -276,20 +288,3 @@ function ChartCard({ title, children, full }) {
   );
 }
 
-function AreaChartGDD({ serie }) {
-  return (
-    <ComposedChart data={serie}>
-      <defs>
-        <linearGradient id="gdd" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="5%" stopColor="#9bcc44" stopOpacity={0.3} />
-          <stop offset="95%" stopColor="#9bcc44" stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <CartesianGrid strokeDasharray="3 3" stroke="#2a3a2c" vertical={false} />
-      <XAxis dataKey="periodo" stroke="#5d6f5a" fontSize={10} tickMargin={8} />
-      <YAxis stroke="#9bcc44" fontSize={10} tickMargin={8} />
-      <Tooltip contentStyle={tooltipStyle} />
-      <Area type="monotone" dataKey="gdd" name="GDD" stroke="#9bcc44" strokeWidth={3} fill="url(#gdd)" />
-    </ComposedChart>
-  );
-}

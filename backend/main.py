@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.simulator.vinedo_simulator import vinedo_sim
 from app.models.vinedo import db_vinedos
-from app.api import telemetry, predictions, clima, riego, chat, auth, fitosanitario, db_admin, comercial, nasa
+from app.api import telemetry, predictions, clima, riego, chat, auth, fitosanitario, db_admin, comercial, nasa, alarmas
 
 def run_simulator():
     print("--> [BACKGROUND] Hilo del simulador iniciado.")
@@ -60,6 +60,16 @@ def sembrar_nasa_en_segundo_plano():
         print(f"--> [NASA] Falló la siembra ({e}); uso historial sintético.")
         vinedo_sim.inicializar_con_historial(horas_atras=48)
 
+    # Retrocarga de Brix manual simulado para 2026 (1 lectura/mes, incluye
+    # el nodo real Patio_Casa). Idempotente: solo corre una vez.
+    try:
+        from app.db.database import ya_hay_brix_2026_seed, save_telemetry_db as _guardar_brix
+        ya_2026 = ya_hay_brix_2026_seed() if persist else False
+        vinedo_sim.simular_brix_2026_manual(persist_fn=(_guardar_brix if persist else None),
+                                            ya_sembrado=ya_2026)
+    except Exception as e:
+        print(f"--> [BRIX 2026] No se pudo sembrar: {e}")
+
     threading.Thread(target=run_simulator, daemon=True).start()
 
 
@@ -83,6 +93,33 @@ async def lifespan(app: FastAPI):
             print("--> [DB] Sincronización de cuarteles ejecutada en MySQL.")
         except Exception as e:
             print(f"--> [DB] Error al sincronizar cuarteles: {e}")
+
+        # Columna nueva para observaciones de lecturas manuales (Brix a mano).
+        # ADD COLUMN IF NOT EXISTS: idempotente. Va en su propia transacción para
+        # que un MySQL viejo (sin soporte de esta sintaxis) no bloquee lo demás.
+        try:
+            with get_engine().begin() as conn:
+                conn.execute(text(
+                    "ALTER TABLE telemetria ADD COLUMN IF NOT EXISTS observacion VARCHAR(255) NULL;"
+                ))
+            print("--> [DB] Columna 'observacion' verificada en telemetria.")
+        except Exception as e:
+            print(f"--> [DB] No se pudo agregar columna 'observacion' (no crítico): {e}")
+
+        # Súper admin real (vos): se crea SIN contraseña. Activás tu acceso yendo
+        # a /setup-password con este email — set_password NUNCA pisa el rol de
+        # una fila que ya existe, así que tu rol queda en 'superadmin' pase lo
+        # que pase. El login público de demo (ROOT_ADMIN_USER) es una cuenta
+        # aparte y nunca es superadmin.
+        try:
+            with get_engine().begin() as conn:
+                conn.execute(text("""
+                    INSERT IGNORE INTO admins (username, nombre, email, rol, activo) VALUES
+                    ('drazewski', 'Roberto Drazewski', 'drazewski@gmail.com', 'superadmin', 0);
+                """))
+            print("--> [DB] Súper admin (drazewski@gmail.com) verificado en MySQL.")
+        except Exception as e:
+            print(f"--> [DB] No se pudo sembrar el súper admin: {e}")
 
     # 1b. Pre-registrar el NODO REAL del patio (hardware).
     try:
@@ -129,6 +166,7 @@ app.include_router(fitosanitario.router, prefix=P)
 app.include_router(db_admin.router, prefix=P)
 app.include_router(comercial.router, prefix=P)
 app.include_router(nasa.router, prefix=P)
+app.include_router(alarmas.router, prefix=P)
 
 
 @app.get(f"{P}/vinedos", tags=["Telemetría"])

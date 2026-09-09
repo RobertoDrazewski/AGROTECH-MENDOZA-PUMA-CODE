@@ -1,8 +1,29 @@
-from fastapi import APIRouter, HTTPException, Request
+from datetime import datetime
+from fastapi import APIRouter, HTTPException, Request, Header
+from pydantic import BaseModel
 from app.models.vinedo import db_vinedos
 from app.schemas.telemetry import TelemetryCreate
 
 router = APIRouter(prefix="/telemetria", tags=["Telemetria"])
+
+
+def _requiere_sesion(authorization: str | None) -> str:
+    """Carga manual de Brix: requiere estar logueado en el panel (cualquier
+    rol). No usamos el helper de auth.py para no acoplar los módulos."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Token requerido.")
+    from app.auth import security
+    user = security.verify_token(authorization.split(" ", 1)[1])
+    if not user:
+        raise HTTPException(401, "Token inválido o expirado.")
+    return user
+
+
+class BrixManualIn(BaseModel):
+    brix: float
+    ph: float | None = None
+    fecha: str | None = None  # ISO (ej: 2026-03-15T10:00), opcional
+    observacion: str | None = None
 
 
 @router.get("", response_model=list)
@@ -94,6 +115,46 @@ async def ingestar_telemetria_real(payload: TelemetryCreate, request: Request):
     if diag:
         resp["diag_bmp"] = diag
     return resp
+
+
+@router.post("/{vinedo_id}/brix-manual")
+def registrar_brix_manual(vinedo_id: str, body: BrixManualIn,
+                          authorization: str | None = Header(default=None)):
+    """Carga manual de una lectura de Brix (y opcionalmente pH) tomada a mano
+    por el ingeniero agrónomo con refractómetro de campo, por cuartel. Se
+    guarda como una lectura más (source='manual') así alimenta el mismo
+    histórico y KPI de maduración (/analisis/cosecha/{id}) que usa el resto
+    del dashboard, sin necesitar sensores para ese cuartel."""
+    _requiere_sesion(authorization)
+
+    ts = None
+    if body.fecha:
+        try:
+            ts = datetime.fromisoformat(body.fecha)
+        except Exception:
+            ts = None
+    ts = ts or datetime.utcnow()
+
+    rec_in = {
+        "vinedo_id": vinedo_id,
+        "timestamp": ts,
+        "source": "manual",
+        "uva_brix": body.brix,
+        "uva_ph": body.ph,
+        "observacion": body.observacion,
+    }
+    rec = db_vinedos.save_telemetry(rec_in)
+
+    try:
+        from app.core.config import settings
+        if bool(settings.DATABASE_URL):
+            from app.db.database import save_telemetry_db
+            save_telemetry_db([rec])
+    except Exception as e:
+        print(f"--> [BRIX MANUAL] No se pudo persistir en MySQL (sigo OK): {e}")
+
+    return {"status": "ok", "vinedo_id": vinedo_id, "id": rec["id"],
+            "timestamp": rec["timestamp"], "uva_brix": rec["uva_brix"], "uva_ph": rec.get("uva_ph")}
 
 
 @router.get("/{vinedo_id}")

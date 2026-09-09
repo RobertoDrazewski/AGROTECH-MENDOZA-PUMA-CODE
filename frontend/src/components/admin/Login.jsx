@@ -18,6 +18,7 @@ export default function Login({ onLoginSuccess }) {
       if (res?.token) {
         localStorage.setItem('token', res.token);
         localStorage.setItem('adminUser', res.nombre || res.username || username);
+        localStorage.setItem('adminRole', res.rol || 'operador');
         onLoginSuccess?.();
         navigate('/admin');
       } else {

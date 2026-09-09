@@ -35,6 +35,7 @@ class Telemetria(Base):
     lon = Column(Numeric(9, 6))
     rssi = Column(Integer)
     alerta_helada = Column(Boolean, nullable=False, default=False)
+    observacion = Column(String(255))
 
 
 class Admin(Base):

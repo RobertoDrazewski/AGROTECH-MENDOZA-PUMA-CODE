@@ -6,7 +6,7 @@ POST /api/v1/telemetria/ingest, este simulador puede apagarse desde config.
 """
 import math
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta  # noqa: F401 (datetime usado en simular_brix_2026_manual)
 from app.models.vinedo import db_vinedos
 
 
@@ -176,6 +176,51 @@ class VinedoSimulator:
               f"persistidos {len(persistidos)} cuarteles nuevos en MySQL. "
               f"El simulador continúa en vivo desde el último dato real.")
         return True
+
+    def simular_brix_2026_manual(self, persist_fn=None, ya_sembrado=False):
+        """Retrocarga 1 lectura de Brix 'manual' por mes para todo el año 2026,
+        como si el ingeniero agrónomo hubiera estado cargando a mano las lecturas
+        durante todo el año. Incluye también el nodo real de hardware
+        (Patio_Casa), no solo los cuarteles de demo. Idempotente: si ya existen
+        filas con source='manual_2026_seed' en MySQL, no vuelve a sembrar."""
+        if ya_sembrado:
+            print("--> [BRIX 2026] Ya sembrado anteriormente; se saltea.")
+            return
+
+        ids = set(self.cuarteles.keys()) | set(db_vinedos.get_all_vinedos_ids())
+        if not ids:
+            return
+
+        total = 0
+        for vinedo_id in ids:
+            base = self.cuarteles.get(vinedo_id, {}).get("brix", 13.0)
+            recs = []
+            for mes in range(1, 13):
+                # Curva estacional simplificada: sube hacia la vendimia
+                # (madurez plena alrededor de Feb-Abr) y se mantiene estable
+                # el resto del año (ciclo de reposo / próxima brotación).
+                progreso = min(1.0, mes / 4.0)
+                brix = (base - 4.0) + (24.5 - (base - 4.0)) * progreso + random.uniform(-0.3, 0.3)
+                ph = 3.05 + 0.35 * progreso + random.uniform(-0.02, 0.02)
+                ts = datetime(2026, mes, 15, 10, 0, 0)
+                rec = {
+                    "vinedo_id": vinedo_id,
+                    "timestamp": ts,
+                    "source": "manual_2026_seed",
+                    "uva_brix": round(brix, 2),
+                    "uva_ph": round(ph, 3),
+                    "observacion": "Lectura manual simulada (retrocarga 2026)",
+                }
+                db_vinedos.save_telemetry(rec)
+                recs.append(rec)
+                total += 1
+            if persist_fn:
+                try:
+                    persist_fn(recs)
+                except Exception as e:
+                    print(f"--> [BRIX 2026] {vinedo_id}: no se pudo persistir ({e}).")
+        print(f"--> [BRIX 2026] Sembradas {total} lecturas manuales simuladas "
+              f"(12 meses x {len(ids)} cuarteles, incluye Patio_Casa).")
 
 
 vinedo_sim = VinedoSimulator()

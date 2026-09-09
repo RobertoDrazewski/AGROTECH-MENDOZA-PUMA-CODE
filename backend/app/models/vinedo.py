@@ -46,7 +46,7 @@ class VinedoStorage:
             **telemetry_data,
             "timestamp": telemetry_data.get("timestamp") or datetime.utcnow(),
             "source": telemetry_data.get("source", "simulator"),
-            "alerta_helada": telemetry_data["temp_aire"] <= 2.0,
+            "alerta_helada": bool((telemetry_data.get("temp_aire") or 99) <= 2.0),
         }
         self._db[vinedo_id].append(full_record)
         self._global_id_counter += 1

@@ -78,7 +78,11 @@ function AjustarVista({ cuarteles }) {
   useEffect(() => {
     if (!cuarteles.length) return;
     const bounds = L.latLngBounds(cuarteles.map((c) => [c.lat, c.lon]));
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+    // Con el mapa más grande (a todo el ancho) hay más píxeles disponibles
+    // para el mismo territorio, así que fitBounds ya elige más zoom solo.
+    // Bajamos el padding y subimos el techo de zoom para acercar un poco
+    // más sin perder ningún punto de vista.
+    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
   }, [cuarteles, map]);
   return null;
 }
@@ -94,7 +98,7 @@ function CapturarClics({ activo, onClick }) {
   return null;
 }
 
-export default function VineyardMap({ vinedos, selectedVinedo, setSelectedVinedo, currentTemp }) {
+export default function VineyardMap({ vinedos, selectedVinedo, setSelectedVinedo, currentTemp, mapHeight = 280 }) {
   const [cuarteles, setCuarteles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editando, setEditando] = useState(false);
@@ -194,7 +198,7 @@ export default function VineyardMap({ vinedos, selectedVinedo, setSelectedVinedo
       )}
 
 
-      <div className="relative rounded-lg overflow-hidden border border-[#2a3a2c] min-h-[260px]" style={{ height: 280 }}>
+      <div className="relative rounded-lg overflow-hidden border border-[#2a3a2c] min-h-[260px]" style={{ height: mapHeight }}>
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center bg-[#0e1512] text-xs text-[#5d6f5a]">
             Cargando mapa…

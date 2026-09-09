@@ -4,6 +4,8 @@ import {
   Loader2, LayoutDashboard, CloudSnow, Droplets,
   BarChart3, Users, LogOut, Menu, X, ExternalLink, Leaf, Bug, Wind, CloudRain,
 } from 'lucide-react';
+import apiService from './services/api';
+import AlarmBell from './components/admin/AlarmBell';
 
 import Home from './Home';
 import Login from './components/admin/Login';
@@ -62,6 +64,7 @@ export default function App() {
           authToken ? <AdminLayout onLogout={() => {
             localStorage.removeItem('token');
             localStorage.removeItem('adminUser');
+            localStorage.removeItem('adminRole');
             setAuthToken(null);
           }} /> : <Navigate to="/login" replace />
         } />
@@ -73,10 +76,27 @@ export default function App() {
 
 function AdminLayout({ onLogout }) {
   const [activeTab, setActiveTab] = useState('TabTelemetria');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const adminUser = localStorage.getItem('adminUser') || 'admin';
+  const [adminRole, setAdminRole] = useState(localStorage.getItem('adminRole') || null);
 
-  const menu = [
+  // Preguntamos al backend quién soy realmente (no confiamos solo en lo que
+  // quedó cacheado en localStorage): así, si el rol cambia del lado del
+  // servidor, el panel lo refleja apenas se refresca la página.
+  useEffect(() => {
+    apiService.me()
+      .then((r) => {
+        if (r?.rol) {
+          setAdminRole(r.rol);
+          localStorage.setItem('adminRole', r.rol);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const esSuperAdmin = adminRole === 'superadmin';
+
+  const menuCompleto = [
     { id: 'TabTelemetria', label: 'Telemetría en Vivo', icon: LayoutDashboard },
     { id: 'TabHeladas',    label: 'Clima & Heladas',     icon: CloudSnow },
     { id: 'TabZonda',      label: 'Viento Zonda',        icon: Wind },
@@ -84,8 +104,17 @@ function AdminLayout({ onLogout }) {
     { id: 'TabRiego',      label: 'Riego Inteligente',   icon: Droplets },
     { id: 'TabAnalisis',   label: 'Análisis Anual/Mes',  icon: BarChart3 },
     { id: 'TabFitosanitario', label: 'Sanidad IA (Plagas)', icon: Bug },
-    { id: 'TabStaff',      label: 'Staff & Accesos',     icon: Users },
+    { id: 'TabStaff',      label: 'Staff & Accesos',     icon: Users, soloSuperAdmin: true },
   ];
+
+  // El demo público (y cualquier operador que no sea super admin) no ve
+  // "Staff & Accesos" en el menú. El backend igual lo bloquea aunque alguien
+  // fuerce la URL: esto es solo para que la UI no muestre algo que no puede usar.
+  const menu = menuCompleto.filter((item) => !item.soloSuperAdmin || esSuperAdmin);
+
+  useEffect(() => {
+    if (activeTab === 'TabStaff' && !esSuperAdmin) setActiveTab('TabTelemetria');
+  }, [activeTab, esSuperAdmin]);
 
   const LoadingTab = () => (
     <div className="w-full h-64 flex flex-col items-center justify-center gap-3">
@@ -95,14 +124,17 @@ function AdminLayout({ onLogout }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#0e1512] text-white font-sans antialiased flex relative">
+    <div className="min-h-screen bg-[#0e1512] text-white font-sans antialiased relative">
       <button onClick={() => setSidebarOpen(!sidebarOpen)}
         className="lg:hidden fixed top-4 left-4 z-50 p-2.5 bg-[#18211b] border border-[#2a3a2c] rounded-xl text-white shadow-2xl">
         {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
       </button>
 
-      <aside className={`fixed lg:static inset-y-0 left-0 w-72 bg-[#18211b] border-r border-[#2a3a2c]/60 flex flex-col transition-transform duration-300 z-40 p-5 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <div className="pt-2 lg:pt-0 border-b border-[#2a3a2c]/50 pb-4 mb-4 flex items-center gap-2.5">
+      {/* Sidebar: en escritorio queda SIEMPRE fija y entera (nav + volver/salir
+          nunca requieren scroll); en móvil es un panel off-canvas que se abre
+          como menú hamburguesa. */}
+      <aside className={`fixed top-0 left-0 h-screen w-72 bg-[#18211b] border-r border-[#2a3a2c]/60 flex flex-col z-40 p-5 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+        <div className="pt-2 lg:pt-0 border-b border-[#2a3a2c]/50 pb-4 mb-4 flex items-center gap-2.5 shrink-0">
           <div className="p-2 bg-[#9bcc44]/10 rounded-xl text-[#9bcc44] border border-[#9bcc44]/20">
             <Leaf size={18} />
           </div>
@@ -127,9 +159,9 @@ function AdminLayout({ onLogout }) {
           })}
         </nav>
 
-        {/* Volver al sitio / Cerrar sesión — antes no existía y era imposible
-            salir del panel salvo tocando la URL a mano */}
-        <div className="pt-4 mt-4 border-t border-[#2a3a2c]/50 space-y-1">
+        {/* Volver al sitio / Cerrar sesión — siempre visibles, sin scroll,
+            porque el <aside> es h-screen + flex-col y esta franja va shrink-0. */}
+        <div className="pt-4 mt-4 border-t border-[#2a3a2c]/50 space-y-1 shrink-0">
           <Link to="/"
             onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-[#9fb09c] hover:text-white hover:bg-[#121a14]/60 transition-all">
@@ -142,14 +174,22 @@ function AdminLayout({ onLogout }) {
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0 min-h-screen flex flex-col bg-[#0e1512]">
-        <header className="h-20 border-b border-[#2a3a2c]/30 px-6 lg:px-10 flex items-center justify-between bg-[#18211b]/10 backdrop-blur-md sticky top-0 z-30">
+      {/* Overlay para cerrar el menú tocando afuera, solo en móvil */}
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 bg-black/50 z-30" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Contenido: en escritorio se corre a la derecha del ancho fijo del
+          sidebar (lg:pl-72), porque el <aside> ahora es fixed siempre. */}
+      <div className="lg:pl-72 min-h-screen flex flex-col bg-[#0e1512]">
+        <header className="h-20 border-b border-[#2a3a2c]/30 px-6 lg:px-10 flex items-center justify-between bg-[#18211b]/10 backdrop-blur-md sticky top-0 z-20">
           <div className="pl-12 lg:pl-0 text-left">
             <h2 className="text-[10px] font-black uppercase tracking-widest text-[#5d6f5a]">Consola Agronómica</h2>
             <p className="text-sm font-black text-white uppercase italic mt-0.5 tracking-tight">
               {menu.find(m => m.id === activeTab)?.label}
             </p>
           </div>
+          <AlarmBell />
         </header>
 
         <main className="p-4 md:p-8 lg:p-10 flex-1 overflow-y-auto w-full">
@@ -162,7 +202,7 @@ function AdminLayout({ onLogout }) {
               {activeTab === 'TabRiego' && <TabRiego />}
               {activeTab === 'TabAnalisis' && <TabAnalisis />}
               {activeTab === 'TabFitosanitario' && <TabFitosanitario />}
-              {activeTab === 'TabStaff' && <TabStaff />}
+              {activeTab === 'TabStaff' && esSuperAdmin && <TabStaff />}
             </Suspense>
           </div>
         </main>

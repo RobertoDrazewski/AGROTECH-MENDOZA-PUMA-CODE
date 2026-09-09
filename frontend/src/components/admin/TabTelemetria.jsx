@@ -4,6 +4,7 @@ import MetricsGrid from '../dashboard/MetricsGrid';
 import AlertPanel from '../dashboard/AlertPanel';
 import WeatherChart from '../dashboard/WeatherChart';
 import HarvestPredictor from '../dashboard/HarvestPredictor';
+import BrixManualForm from './BrixManualForm';
 import VineyardMap from '../maps/VineyardMap';
 import NasaComparison from '../dashboard/NasaComparison';
 import RealTimeFrostPhysics from '../dashboard/RealTimeFrostPhysics';
@@ -11,9 +12,9 @@ import { Layers, WifiOff } from 'lucide-react';
 
 export default function TabTelemetria() {
   // Se agregó 'nasa' extraído del custom hook
-  const { 
-    vinedos, selected, setSelected, telemetry, frost, 
-    harvest, current, currentTemp, loading, error, nasa 
+  const {
+    vinedos, selected, setSelected, telemetry, frost,
+    harvest, current, currentTemp, loading, error, nasa
   } = useDashboard(3000);
 
   return (
@@ -40,24 +41,28 @@ export default function TabTelemetria() {
 
       {/* Alertas Críticas (Isolation Forest / Predictor Backend) */}
       {frost && <AlertPanel frostPrediction={frost} />}
-      
+
       {/* Grilla principal de sensores */}
       <MetricsGrid currentData={current} anomaly={frost?.ml_anomaly} />
-      
+
       {/* Fila analítica: Física en tiempo real y contraste satelital NASA */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RealTimeFrostPhysics currentData={current} />
         <NasaComparison current={current} nasa={nasa} />
       </div>
 
-      {/* Mapas y Gráficos Históricos */}
+      {/* Mapa a todo el ancho (el doble de grande que antes) y, debajo,
+          el gráfico de Tendencia climática — antes iban lado a lado en una
+          grilla de 2 columnas y el mapa quedaba chico. */}
+      <VineyardMap vinedos={vinedos} selectedVinedo={selected} setSelectedVinedo={setSelected}
+        currentTemp={currentTemp} mapHeight={520} />
+      <WeatherChart telemetryHistory={telemetry} />
+
+      {/* Análisis de maduración (KPI por cuartel) y carga manual de Brix */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <VineyardMap vinedos={vinedos} selectedVinedo={selected} setSelectedVinedo={setSelected} currentTemp={currentTemp} />
-        <WeatherChart telemetryHistory={telemetry} />
+        <HarvestPredictor harvestAnalysis={harvest} />
+        <BrixManualForm />
       </div>
-      
-      {/* Análisis de maduración y predicción de cosecha */}
-      <HarvestPredictor harvestAnalysis={harvest} />
     </div>
   );
 }
