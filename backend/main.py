@@ -95,16 +95,38 @@ async def lifespan(app: FastAPI):
             print(f"--> [DB] Error al sincronizar cuarteles: {e}")
 
         # Columna nueva para observaciones de lecturas manuales (Brix a mano).
-        # ADD COLUMN IF NOT EXISTS: idempotente. Va en su propia transacción para
-        # que un MySQL viejo (sin soporte de esta sintaxis) no bloquee lo demás.
+        # OJO: "ADD COLUMN IF NOT EXISTS" no es soportado (o no corrió bien) en
+        # esta instancia de Aiven MySQL, y esto rompió TODOS los inserts de
+        # telemetria porque el ORM sí manda la columna 'observacion'. Se
+        # reemplaza por el patrón portable: primero se pregunta a
+        # information_schema.columns si la columna existe, y si no existe
+        # recién ahí se hace el ALTER TABLE liso (sin IF NOT EXISTS). Además
+        # el ALTER va con try/except propio que ignora específicamente el
+        # error 1060 (Duplicate column name) por si dos instancias arrancan
+        # a la vez y ambas ven "no existe" antes de que la primera la cree.
         try:
             with get_engine().begin() as conn:
-                conn.execute(text(
-                    "ALTER TABLE telemetria ADD COLUMN IF NOT EXISTS observacion VARCHAR(255) NULL;"
-                ))
-            print("--> [DB] Columna 'observacion' verificada en telemetria.")
+                existe = conn.execute(text("""
+                    SELECT COUNT(*) FROM information_schema.columns
+                    WHERE table_schema = DATABASE()
+                      AND table_name = 'telemetria'
+                      AND column_name = 'observacion';
+                """)).scalar()
+                if not existe:
+                    try:
+                        conn.execute(text(
+                            "ALTER TABLE telemetria ADD COLUMN observacion VARCHAR(255) NULL;"
+                        ))
+                        print("--> [DB] Columna 'observacion' agregada a telemetria.")
+                    except Exception as e_alter:
+                        if "1060" in str(e_alter):
+                            print("--> [DB] Columna 'observacion' ya existía (carrera con otra instancia). OK.")
+                        else:
+                            raise
+                else:
+                    print("--> [DB] Columna 'observacion' ya existe en telemetria.")
         except Exception as e:
-            print(f"--> [DB] No se pudo agregar columna 'observacion' (no crítico): {e}")
+            print(f"--> [DB] No se pudo verificar/agregar columna 'observacion' (no crítico): {e}")
 
         # Súper admin real (vos): se crea SIN contraseña si no existía. Activás
         # tu acceso yendo a /setup-password con este email — eso solo toca
