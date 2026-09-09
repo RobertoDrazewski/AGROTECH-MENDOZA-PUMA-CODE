@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import useDashboard from '../../hooks/useDashboard';
 import MetricsGrid from '../dashboard/MetricsGrid';
 import AlertPanel from '../dashboard/AlertPanel';
@@ -53,9 +54,9 @@ export default function LiveDemo() {
         </div>
 
         <div className="mt-6 text-center">
-          <a href="/login" className="inline-flex items-center gap-2 text-[#9bcc44] hover:text-white text-xs font-black uppercase tracking-widest transition-colors">
+          <Link to="/login" className="inline-flex items-center gap-2 text-[#9bcc44] hover:text-white text-xs font-black uppercase tracking-widest transition-colors">
             <Activity size={14} /> Acceder al panel completo de tu bodega →
-          </a>
+          </Link>
         </div>
       </div>
     </section>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import {
   Loader2, LayoutDashboard, CloudSnow, Droplets,
   BarChart3, Users, LogOut, Menu, X, ExternalLink, Leaf, Bug, Wind, CloudRain,
@@ -126,8 +126,20 @@ function AdminLayout({ onLogout }) {
             );
           })}
         </nav>
-        
-        {/* Botones de acción al final del sidebar... */}
+
+        {/* Volver al sitio / Cerrar sesión — antes no existía y era imposible
+            salir del panel salvo tocando la URL a mano */}
+        <div className="pt-4 mt-4 border-t border-[#2a3a2c]/50 space-y-1">
+          <Link to="/"
+            onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-[#9fb09c] hover:text-white hover:bg-[#121a14]/60 transition-all">
+            <ExternalLink size={14} className="text-[#5d6f5a]" /> Volver al sitio
+          </Link>
+          <button onClick={onLogout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-[#9fb09c] hover:text-rose-400 hover:bg-[#121a14]/60 transition-all text-left">
+            <LogOut size={14} className="text-[#5d6f5a]" /> Cerrar sesión
+          </button>
+        </div>
       </aside>
 
       <div className="flex-1 min-w-0 min-h-screen flex flex-col bg-[#0e1512]">
