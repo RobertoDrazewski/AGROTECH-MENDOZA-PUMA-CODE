@@ -1,4 +1,4 @@
-import eval_type_backport; eval_type_backport.init()
+import eval_type_backport; eval_type_backport.install_patch()
 """AgroTech Mendoza by puma-code.com — API (FastAPI)."""
 import threading
 import time
