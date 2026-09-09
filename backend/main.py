@@ -106,18 +106,22 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"--> [DB] No se pudo agregar columna 'observacion' (no crítico): {e}")
 
-        # Súper admin real (vos): se crea SIN contraseña. Activás tu acceso yendo
-        # a /setup-password con este email — set_password NUNCA pisa el rol de
-        # una fila que ya existe, así que tu rol queda en 'superadmin' pase lo
-        # que pase. El login público de demo (ROOT_ADMIN_USER) es una cuenta
-        # aparte y nunca es superadmin.
+        # Súper admin real (vos): se crea SIN contraseña si no existía. Activás
+        # tu acceso yendo a /setup-password con este email — eso solo toca
+        # password_hash/activo, nunca el rol. Usamos ON DUPLICATE KEY UPDATE
+        # (no INSERT IGNORE) a propósito: si por lo que sea ya existía una fila
+        # con este username/email con otro rol (por ejemplo, quedó creada como
+        # 'operador' por un camino viejo), este deploy la CORRIGE a
+        # 'superadmin' en vez de dejarla como estaba. El login público de demo
+        # (ROOT_ADMIN_USER) es una cuenta aparte y nunca es superadmin.
         try:
             with get_engine().begin() as conn:
                 conn.execute(text("""
-                    INSERT IGNORE INTO admins (username, nombre, email, rol, activo) VALUES
-                    ('drazewski', 'Roberto Drazewski', 'drazewski@gmail.com', 'superadmin', 0);
+                    INSERT INTO admins (username, nombre, email, rol, activo) VALUES
+                    ('drazewski', 'Roberto Drazewski', 'drazewski@gmail.com', 'superadmin', 0)
+                    ON DUPLICATE KEY UPDATE rol = 'superadmin', nombre = 'Roberto Drazewski';
                 """))
-            print("--> [DB] Súper admin (drazewski@gmail.com) verificado en MySQL.")
+            print("--> [DB] Súper admin (drazewski@gmail.com) verificado/corregido en MySQL.")
         except Exception as e:
             print(f"--> [DB] No se pudo sembrar el súper admin: {e}")
 
