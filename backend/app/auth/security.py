@@ -107,25 +107,47 @@ def create_invite(nombre: str, email: str) -> str:
 
 
 def set_password(email_or_user: str, password: str):
-    """Define la contraseña (activa el acceso). Crea el admin si no existía."""
+    """Activa el acceso de una cuenta que el super admin YA CREÓ con
+    /auth/invite. A propósito NO crea cuentas nuevas: si el email no
+    corresponde a una invitación pendiente, se rechaza (ValueError
+    "NO_INVITADO"). Tampoco permite pisar una contraseña ya activa
+    (ValueError "YA_ACTIVA") — para eso el super admin usa "Reenviar
+    acceso" (reset_password), que primero invalida la actual.
+    Esto es lo que evita que cualquiera se autoregistre desde
+    /setup-password con un email inventado."""
     from app.db import models
     s = _session()
     try:
         key = email_or_user.lower()
-        admin = None
         if "@" in key:
             admin = s.query(models.Admin).filter_by(email=key).first()
-            username = key.split("@")[0].replace(" ", ".")
         else:
-            username = key
-            admin = s.query(models.Admin).filter_by(username=username).first()
+            admin = s.query(models.Admin).filter_by(username=key).first()
         if not admin:
-            admin = models.Admin(username=username, nombre=username,
-                                 email=key if "@" in key else f"{username}@bodega.com",
-                                 rol="operador")
-            s.add(admin)
+            raise ValueError("NO_INVITADO")
+        if admin.password_hash:
+            raise ValueError("YA_ACTIVA")
         admin.password_hash = hash_password(password)
         admin.activo = True
+        s.commit()
+        return admin.username
+    finally:
+        s.close()
+
+
+def reset_password(username: str):
+    """Solo para el super admin: invalida la contraseña actual de una
+    cuenta para que pueda volver a activarse con /setup-password (por
+    ejemplo, si el cliente se olvidó la clave). No borra la cuenta ni
+    cambia su rol, solo la deja pendiente de activar de nuevo."""
+    from app.db import models
+    s = _session()
+    try:
+        admin = s.query(models.Admin).filter_by(username=username.lower()).first()
+        if not admin:
+            return None
+        admin.password_hash = None
+        admin.activo = False
         s.commit()
         return admin.username
     finally:

@@ -90,9 +90,20 @@ def me(authorization: str | None = Header(default=None)):
 
 @router.post("/setup-password")
 def setup_password(body: SetupIn):
+    """Activa una cuenta que el super admin ya creó con /auth/invite.
+    A propósito NO acepta un email cualquiera: si nadie te invitó con ese
+    email, o esa cuenta ya tiene una contraseña activa, se rechaza. Así
+    nadie puede autoregistrarse desde esta pantalla."""
     if len(body.password) < 6:
         raise HTTPException(400, "La contraseña debe tener al menos 6 caracteres.")
-    username = security.set_password(body.email, body.password)
+    try:
+        username = security.set_password(body.email, body.password)
+    except ValueError as e:
+        if str(e) == "NO_INVITADO":
+            raise HTTPException(404, "Ese email no tiene una invitación pendiente. Pedile el acceso a tu administrador.")
+        if str(e) == "YA_ACTIVA":
+            raise HTTPException(409, "Esta cuenta ya tiene una contraseña activa. Pedile a tu administrador que te reenvíe el acceso.")
+        raise HTTPException(400, "No se pudo crear la contraseña.")
     return {"status": "success", "success": True, "username": username}
 
 
@@ -108,3 +119,19 @@ def invite(body: InviteIn, authorization: str | None = Header(default=None)):
 def admins(authorization: str | None = Header(default=None)):
     _check_superadmin(authorization)
     return security.list_admins()
+
+
+@router.post("/admins/{username}/resetear")
+def resetear_acceso(username: str, authorization: str | None = Header(default=None)):
+    """Solo super admin: invalida la contraseña actual de una cuenta
+    (ej. una bodega que se olvidó la clave) para que pueda volver a
+    activarse con el link de /setup-password. Es la única forma de
+    recuperar el acceso ahora que /setup-password ya no acepta emails
+    sin invitación ni pisa contraseñas ya activas."""
+    _check_superadmin(authorization)
+    admin = security.get_admin(username)
+    if not admin:
+        raise HTTPException(404, "No existe ese usuario.")
+    security.reset_password(username)
+    return {"status": "success", "username": username,
+            "setup_url": f"/setup-password?email={admin['email']}"}

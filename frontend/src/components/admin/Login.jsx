@@ -72,9 +72,11 @@ export default function Login({ onLoginSuccess }) {
           </button>
         </form>
 
-        <p className="text-center text-[11px] text-[#5d6f5a] mt-6">
-          ¿Primer acceso? <a href="/setup-password" className="text-[#9bcc44] font-bold hover:underline">Creá tu contraseña</a>
-        </p>
+        {/* Antes acá había un link público "¿Primer acceso? Creá tu
+            contraseña" que dejaba que cualquiera se autoregistrara con
+            cualquier email en /setup-password. Se sacó a propósito: ahora
+            esa pantalla solo la usan las bodegas invitadas por el super
+            admin desde "Staff & Accesos", con el link que ese módulo genera. */}
         <p className="text-center text-[10px] text-[#3d4a3a] mt-3 font-mono">
           Demo: usuario <span className="text-[#8a9787]">roberto</span> · clave <span className="text-[#8a9787]">agrotech2026</span>
         </p>

@@ -41,6 +41,7 @@ const apiService = {
   setupPassword:        async (email, password) => (await api.post('/auth/setup-password', { email, password })).data,
   invite:               async (nombre, email) => (await api.post('/auth/invite', { nombre, email })).data,
   getAdmins:            async () => (await api.get('/auth/admins')).data,
+  resetearAcceso:       async (username) => (await api.post(`/auth/admins/${username}/resetear`)).data,
   // Alarmas (campanita del panel)
   escanearAlarmas:      async () => (await api.get('/alarmas/scan')).data,
   getAlarmasHistorico:  async (limit = 50) => (await api.get(`/alarmas?limit=${limit}`)).data,
