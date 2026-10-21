@@ -147,6 +147,20 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"--> [DB] No se pudo sembrar el súper admin: {e}")
 
+        # Restaurar las geocercas (polígonos reales de cada cuartel, marcados
+        # a mano sobre el satélite) que estén guardadas en MySQL. Antes vivían
+        # SOLO en RAM y se perdían en cada redeploy de Railway; ahora, si ya
+        # se guardó una, se recupera acá antes de que arranque el simulador.
+        try:
+            from app.db.database import cargar_geocercas_db
+            geocercas_guardadas = cargar_geocercas_db()
+            for vid, puntos in geocercas_guardadas.items():
+                db_vinedos.set_geocerca(vid, puntos)
+            if geocercas_guardadas:
+                print(f"--> [DB] Geocercas restauradas desde MySQL: {list(geocercas_guardadas.keys())}")
+        except Exception as e:
+            print(f"--> [DB] No se pudieron restaurar las geocercas: {e}")
+
     # 1b. Pre-registrar el NODO REAL del patio (hardware).
     try:
         db_vinedos.register_node_cuartel(

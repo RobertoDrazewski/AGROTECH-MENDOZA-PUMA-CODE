@@ -65,6 +65,59 @@ def save_telemetry_db(records):
     finally:
         s.close()
 
+def guardar_geocerca_db(vinedo_id: str, puntos: list):
+    """Persiste el polígono real de un cuartel (marcado a mano sobre el
+    satélite) en MySQL. Antes esto vivía solo en RAM (VinedoStorage.meta) y
+    se perdía en cada redeploy de Railway — con esto sobrevive reinicios."""
+    from sqlalchemy import text
+    import json
+    try:
+        eng = get_engine()
+        with eng.begin() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS geocercas (
+                    vinedo_id VARCHAR(64) PRIMARY KEY,
+                    puntos_json TEXT NOT NULL,
+                    actualizado_en DATETIME NOT NULL
+                );
+            """))
+            conn.execute(text("""
+                INSERT INTO geocercas (vinedo_id, puntos_json, actualizado_en)
+                VALUES (:v, :p, NOW())
+                ON DUPLICATE KEY UPDATE puntos_json = :p, actualizado_en = NOW();
+            """), {"v": vinedo_id, "p": json.dumps(puntos)})
+    except Exception as e:
+        print(f"--> [DB] No se pudo persistir la geocerca de {vinedo_id} (queda solo en memoria): {e}")
+
+
+def cargar_geocercas_db() -> dict:
+    """Devuelve {vinedo_id: puntos} con todas las geocercas guardadas en
+    MySQL, para restaurarlas en RAM al arrancar el servidor."""
+    from sqlalchemy import text
+    import json
+    try:
+        eng = get_engine()
+        with eng.begin() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS geocercas (
+                    vinedo_id VARCHAR(64) PRIMARY KEY,
+                    puntos_json TEXT NOT NULL,
+                    actualizado_en DATETIME NOT NULL
+                );
+            """))
+            rows = conn.execute(text("SELECT vinedo_id, puntos_json FROM geocercas")).fetchall()
+        salida = {}
+        for vid, puntos_json in rows:
+            try:
+                salida[vid] = json.loads(puntos_json)
+            except Exception:
+                pass
+        return salida
+    except Exception as e:
+        print(f"--> [DB] No se pudieron cargar las geocercas guardadas: {e}")
+        return {}
+
+
 def ya_hay_datos_nasa():
     """True si la tabla telemetria ya tiene lecturas con source='historical_nasa'.
     Se usa para sembrar el historico real UNA sola vez (idempotente): en cada

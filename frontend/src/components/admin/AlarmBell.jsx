@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, X, ShieldAlert, Wind, CloudRain, History } from 'lucide-react';
+import { Bell, X, ShieldAlert, Wind, CloudRain, History, AlertTriangle } from 'lucide-react';
 import apiService from '../../services/api';
 
-const ICONOS = { HELADA: ShieldAlert, ZONDA: Wind, GRANIZO: CloudRain };
+const ICONOS = { HELADA: ShieldAlert, ZONDA: Wind, GRANIZO: CloudRain, ALERTA_SMN: AlertTriangle };
 const COLORES = {
-  HELADA:  { text: 'text-rose-400',   bg: 'bg-rose-500/10',   ring: 'border-rose-500/30' },
-  ZONDA:   { text: 'text-orange-400', bg: 'bg-orange-500/10', ring: 'border-orange-500/30' },
-  GRANIZO: { text: 'text-sky-400',    bg: 'bg-sky-500/10',    ring: 'border-sky-500/30' },
+  HELADA:     { text: 'text-rose-400',   bg: 'bg-rose-500/10',   ring: 'border-rose-500/30' },
+  ZONDA:      { text: 'text-orange-400', bg: 'bg-orange-500/10', ring: 'border-orange-500/30' },
+  GRANIZO:    { text: 'text-sky-400',    bg: 'bg-sky-500/10',    ring: 'border-sky-500/30' },
+  ALERTA_SMN: { text: 'text-purple-400', bg: 'bg-purple-500/10', ring: 'border-purple-500/30' },
 };
 
 const POLL_MS = 20000;

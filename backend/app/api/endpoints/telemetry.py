@@ -48,6 +48,13 @@ def guardar_geocerca(vinedo_id: str, puntos: list[dict]):
     if len(puntos) < 3:
         raise HTTPException(400, "La geocerca necesita al menos 3 puntos.")
     db_vinedos.set_geocerca(vinedo_id, puntos)
+    # Persistimos en MySQL además de RAM: así la geocerca sobrevive a un
+    # redeploy de Railway en vez de perderse (antes solo vivía en memoria).
+    try:
+        from app.db.database import guardar_geocerca_db
+        guardar_geocerca_db(vinedo_id, puntos)
+    except Exception as e:
+        print(f"--> [DB] No se pudo persistir la geocerca (sigue activa en memoria): {e}")
     return {"status": "ok", "vinedo_id": vinedo_id, "puntos": len(puntos)}
 
 

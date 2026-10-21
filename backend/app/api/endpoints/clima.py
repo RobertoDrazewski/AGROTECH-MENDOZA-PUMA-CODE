@@ -79,3 +79,30 @@ def pronostico(vinedo_id: str):
             "riesgos": _riesgos(tmin, tmax, hum, viento, lluvia),
         })
     return {"vinedo_id": vinedo_id, "fuente": "Simulado", "forecast": forecast}
+
+
+@router.get("/alertas-smn")
+def alertas_smn():
+    """Alertas vigentes del Servicio Meteorológico Nacional (feed oficial
+    CAP, sin API key — https://ssl.smn.gob.ar/CAP/AR.php) cruzadas contra la
+    geocerca (o el punto GPS) de cada cuartel. Devuelve los polígonos tal
+    cual los publica el SMN para dibujarlos en el mapa, más la lista de
+    cuarteles que caen adentro de cada uno."""
+    from app.integrations import smn_alertas
+
+    cuarteles = [db_vinedos.get_meta(v) for v in db_vinedos.get_all_vinedos_ids()]
+    alertas = smn_alertas.alertas_vigentes()
+    matches = smn_alertas.cuarteles_en_alerta(cuarteles)
+
+    afectados_por_alerta = {}
+    for m in matches:
+        a = m["alerta"]
+        clave = (a["evento"], a["inicio"], a["vence"])
+        afectados_por_alerta.setdefault(clave, set()).add(m["vinedo_id"])
+
+    salida = []
+    for a in alertas:
+        clave = (a["evento"], a["inicio"], a["vence"])
+        salida.append({**a, "cuarteles_afectados": sorted(afectados_por_alerta.get(clave, []))})
+
+    return {"alertas": salida, "total": len(salida)}

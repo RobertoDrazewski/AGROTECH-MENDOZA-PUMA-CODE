@@ -120,6 +120,27 @@ def escanear_alarmas():
         except Exception:
             pass
 
+    # Alertas oficiales vigentes del SMN (feed CAP), cruzadas contra la
+    # geocerca real (o el punto GPS) de cada cuartel. Solo alarmamos por
+    # severidades relevantes (Moderate/Severe/Extreme) para no llenar la
+    # campanita con alertas "Minor" que el SMN también emite seguido.
+    try:
+        from app.integrations import smn_alertas
+        cuarteles_meta = [db_vinedos.get_meta(v) for v in db_vinedos.get_all_vinedos_ids()]
+        for m in smn_alertas.cuarteles_en_alerta(cuarteles_meta):
+            vinedo_id = m["vinedo_id"]
+            alerta = m["alerta"]
+            severidad = (alerta.get("severidad") or "").lower()
+            if severidad not in ("moderate", "severe", "extreme"):
+                continue
+            nivel = "CRITICAL" if severidad in ("severe", "extreme") else "MEDIUM"
+            msg = f"{alerta.get('evento') or 'Alerta SMN'}: {(alerta.get('descripcion') or '')[:180]}"
+            _guardar(vinedo_id, "ALERTA_SMN", nivel, msg)
+            activas.append({"vinedo_id": vinedo_id, "tipo": "ALERTA_SMN",
+                            "nivel": nivel, "mensaje": msg})
+    except Exception as e:
+        print(f"--> [ALARMAS] No se pudo chequear alertas del SMN: {e}")
+
     return {"activas": activas, "total": len(activas)}
 
 
