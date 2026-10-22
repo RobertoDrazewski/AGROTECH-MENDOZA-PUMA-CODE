@@ -23,6 +23,31 @@ _CACHE_TTL_SEG = 600
 _cache = {"alertas": [], "actualizado_en": 0.0}
 
 
+# Clasificamos cada alerta del SMN en una de nuestras 4 categorías de
+# Control Climático, buscando palabras clave en el evento + descripción
+# (el SMN describe el fenómeno en texto libre, no manda un código fijo).
+# El orden importa: una alerta de "tormenta de granizo" debe caer en
+# GRANIZO y no en LLUVIA aunque mencione lluvia también, por eso GRANIZO
+# y ZONDA se chequean antes que LLUVIA (más genérica).
+_CATEGORIAS_KEYWORDS = [
+    ("HELADA", ("helada", "heladas")),
+    ("ZONDA", ("zonda",)),
+    ("GRANIZO", ("granizo",)),
+    ("LLUVIA", ("lluvia", "lluvias", "tormenta", "tormentas", "precipitaci")),
+]
+
+
+def _categoria_de_alerta(evento: str, descripcion: str = "") -> str:
+    """Devuelve HELADA/ZONDA/GRANIZO/LLUVIA/OTRO según el texto de la
+    alerta, para que el front pueda mostrar cada una en su herramienta
+    correspondiente de Control Climático en vez de todas mezcladas."""
+    texto = f"{evento or ''} {descripcion or ''}".lower()
+    for categoria, claves in _CATEGORIAS_KEYWORDS:
+        if any(c in texto for c in claves):
+            return categoria
+    return "OTRO"
+
+
 def _punto_en_poligono(lat, lon, poligono) -> bool:
     """Ray casting clásico. poligono: lista de (lat, lon)."""
     if lat is None or lon is None or len(poligono) < 3:
@@ -84,6 +109,7 @@ def _parsear_cap_xml(xml_text: str):
             "inicio": inicio,
             "vence": vence,
             "poligonos": poligonos,
+            "categoria": _categoria_de_alerta(evento, descripcion),
         }
     except Exception as e:
         print(f"--> [SMN] No se pudo parsear un CAP XML: {e}")

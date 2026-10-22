@@ -4,8 +4,11 @@ import apiService from '../../services/api';
 import { nombreCuartel } from '../../utils/nombreCuartel';
 
 const ICONOS = { HELADA: ShieldAlert, ZONDA: Wind, GRANIZO: CloudRain, ALERTA_SMN: AlertTriangle };
+// Misma paleta que el mapa de Control Climático (climaIcons.js): cyan =
+// helada, naranja = zonda, celeste = granizo — así el color significa lo
+// mismo en toda la app, desde la campanita hasta el mapa.
 const COLORES = {
-  HELADA:     { text: 'text-rose-400',   bg: 'bg-rose-500/10',   ring: 'border-rose-500/30' },
+  HELADA:     { text: 'text-cyan-400',   bg: 'bg-cyan-500/10',   ring: 'border-cyan-500/30' },
   ZONDA:      { text: 'text-orange-400', bg: 'bg-orange-500/10', ring: 'border-orange-500/30' },
   GRANIZO:    { text: 'text-sky-400',    bg: 'bg-sky-500/10',    ring: 'border-sky-500/30' },
   ALERTA_SMN: { text: 'text-purple-400', bg: 'bg-purple-500/10', ring: 'border-purple-500/30' },

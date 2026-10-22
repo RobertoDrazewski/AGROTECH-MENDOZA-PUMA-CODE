@@ -110,6 +110,9 @@ def nasa_punto(vinedo_id: str):
         "humedad_aire": ultimo["humedad_aire"],
         "presion_atm": ultimo["presion_atm"],
         "punto_rocio": ultimo.get("punto_rocio"),
+        # Dirección real del viento (grados, 0=Norte) para la flecha del
+        # mapa de Viento Zonda. None si NASA no tenía el dato en esa hora.
+        "viento_dir": ultimo.get("viento_dir"),
     }
     _cache[vinedo_id] = {"data": resultado, "ts": ahora}
     return resultado

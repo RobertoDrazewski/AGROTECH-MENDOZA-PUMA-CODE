@@ -24,7 +24,10 @@ from datetime import datetime, timedelta
 import requests
 
 POWER_URL = "https://power.larc.nasa.gov/api/temporal/hourly/point"
-PARAMS = "T2M,RH2M,PS,T2MDEW,WS2M"
+# WD10M: dirección del viento a 10m (grados, 0=Norte) — dato real satelital,
+# se usa para dibujar la flecha de viento en el mapa de Control Climático
+# (Viento Zonda) en vez de inventar una dirección.
+PARAMS = "T2M,RH2M,PS,T2MDEW,WS2M,WD10M"
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
 CACHE_FILE = os.path.join(CACHE_DIR, "nasa_cache.csv")
@@ -42,18 +45,24 @@ def _fetch_point(lat, lon, start, end):
     r = requests.get(POWER_URL, params=params, timeout=90)
     r.raise_for_status()
     p = r.json()["properties"]["parameter"]
+    wd10m = p.get("WD10M", {})
     filas = []
     for ts_key in sorted(p["T2M"].keys()):
         t = p["T2M"][ts_key]
         if t <= -900:  # fill value de NASA
             continue
         dt = datetime.strptime(ts_key, "%Y%m%d%H")
+        dir_viento = wd10m.get(ts_key)
         filas.append({
             "timestamp": dt,
             "temp_aire": round(t, 2),
             "humedad_aire": round(p["RH2M"][ts_key], 2),
             "presion_atm": round(p["PS"][ts_key] * 10.0, 2),  # kPa -> hPa
             "punto_rocio": round(p["T2MDEW"][ts_key], 2),
+            # None si NASA no trae el dato (fill value -999) en vez de
+            # inventar una dirección — el front simplemente no dibuja la
+            # flecha cuando viene null.
+            "viento_dir": round(dir_viento, 0) if dir_viento is not None and dir_viento > -900 else None,
         })
     return filas
 
@@ -72,6 +81,10 @@ def _leer_cache():
             r["timestamp"] = datetime.fromisoformat(r["timestamp"])
             for k in ("temp_aire", "humedad_aire", "presion_atm", "punto_rocio"):
                 r[k] = float(r[k])
+            # viento_dir es columna nueva: un cache viejo en disco (de antes
+            # de agregar WD10M) no la va a tener, o puede venir vacía.
+            vd = r.get("viento_dir")
+            r["viento_dir"] = float(vd) if vd not in (None, "") else None
             por_vinedo.setdefault(r["vinedo_id"], []).append(r)
     return por_vinedo
 
@@ -79,7 +92,7 @@ def _leer_cache():
 def _escribir_cache(por_vinedo):
     os.makedirs(CACHE_DIR, exist_ok=True)
     campos = ["vinedo_id", "timestamp", "temp_aire", "humedad_aire",
-              "presion_atm", "punto_rocio"]
+              "presion_atm", "punto_rocio", "viento_dir"]
     with open(CACHE_FILE, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=campos)
         w.writeheader()

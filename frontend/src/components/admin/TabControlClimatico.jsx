@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import apiService from '../../services/api';
 import { nombreCuartel } from '../../utils/nombreCuartel';
 import GaugeCard, { calcPercent } from './GaugeCard';
-import AlertasMapa from '../maps/AlertasMapa';
+import ContingenciaMapa from '../maps/ContingenciaMapa';
+import { COLOR_CATEGORIA } from '../../utils/climaIcons';
 import {
-  CloudSnow, Sun, CloudRain, Wind, Loader2, AlertTriangle, Layers, Satellite,
-  Thermometer, Droplet, TrendingUp, TrendingDown, Sunrise, ShieldAlert, CheckCircle,
-  Snowflake, Radio, Gauge, CloudSun,
+  CloudSnow, Sun, CloudRain, CloudDrizzle, Wind, Loader2, AlertTriangle, Layers, Satellite,
+  Thermometer, Droplet, TrendingUp, TrendingDown, Sunrise, ShieldAlert, CheckCircle, CheckCircle2,
+  Snowflake, Radio, Gauge, CloudSun, ChevronDown,
 } from 'lucide-react';
 
 const RIESGO_STYLE = {
@@ -18,24 +19,35 @@ const RIESGO_STYLE = {
 
 const fmt = (v, d = 1) => (v === null || v === undefined || isNaN(v)) ? '--' : Number(v).toFixed(d);
 
-const SUBTABS = [
-  { id: 'heladas', label: 'Heladas', icon: CloudSnow },
-  { id: 'zonda', label: 'Viento Zonda', icon: Wind },
-  { id: 'granizo', label: 'Granizo', icon: CloudRain },
+// Una sola herramienta "Control Climático" con las 4 contingencias como
+// secciones que se despliegan en el lugar (acordeón), en vez de pestañas
+// que esconden todo lo demás. Cada una comparte el mismo tipo de mapa
+// (ContingenciaMapa) con su propio color y su propia lista de alertas —
+// ya no hay un cajón único de "alertas" mezclando todo.
+const HERRAMIENTAS = [
+  { id: 'HELADA', label: 'Heladas', desc: 'Predicción por enfriamiento radiativo + satélite', icon: CloudSnow },
+  { id: 'ZONDA', label: 'Viento Zonda', desc: 'Detección local por firma termodinámica + dirección real', icon: Wind },
+  { id: 'GRANIZO', label: 'Granizo', desc: 'Radar DACC/RainViewer + parte oficial del SMN', icon: CloudRain },
+  { id: 'LLUVIA', label: 'Lluvia / Tormenta', desc: 'Radar DACC/RainViewer + parte oficial del SMN', icon: CloudDrizzle },
 ];
 
 export default function TabControlClimatico() {
   const [vinedos, setVinedos] = useState([]);
   const [selected, setSelected] = useState('');
-  const [sub, setSub] = useState('heladas');
+  const [abierta, setAbierta] = useState('HELADA');
 
-  // Estado compartido entre las 3 sub-herramientas, para no repetir el
-  // mismo fetch 3 veces (antes cada pestaña pedía /clima/{id} por su cuenta).
+  // Estado compartido entre las 4 sub-herramientas, para no repetir el
+  // mismo fetch 4 veces.
   const [clima, setClima] = useState(null);
   const [helada, setHelada] = useState(null);
   const [nasa, setNasa] = useState(null);
   const [zonda, setZonda] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Cuarteles + alertas oficiales del SMN: un solo fetch para el mapa de
+  // las 4 secciones (antes cada una traía esto por su cuenta).
+  const [cuarteles, setCuarteles] = useState([]);
+  const [alertasSmn, setAlertasSmn] = useState([]);
 
   useEffect(() => {
     apiService.getVinedos().then(v => {
@@ -59,17 +71,37 @@ export default function TabControlClimatico() {
       .finally(() => setLoading(false));
   }, [selected]);
 
+  useEffect(() => {
+    const cargar = () => Promise.all([apiService.getCuarteles(), apiService.getAlertasSmn()])
+      .then(([cu, al]) => {
+        setCuarteles(Array.isArray(cu) ? cu.filter((c) => c.lat && c.lon) : []);
+        setAlertasSmn(Array.isArray(al?.alertas) ? al.alertas : []);
+      }).catch(() => {});
+    cargar();
+    const iv = setInterval(cargar, 10 * 60 * 1000); // igual al caché del backend
+    return () => clearInterval(iv);
+  }, []);
+
   const eventosGranizo = (clima?.forecast || []).filter(d => (d.riesgos || []).some(r => r.tipo === 'GRANIZO'));
+  const diasLluvia = (clima?.forecast || []).filter(d => d.prob_lluvia >= 50);
+  const alertasDe = (cat) => alertasSmn.filter((a) => a.categoria === cat);
+
+  const activoHelada = helada?.risk_level === 'CRITICAL' || helada?.risk_level === 'MEDIUM';
+  const activoZonda = zonda?.risk_level === 'CRITICAL' || zonda?.risk_level === 'MEDIUM';
+  const activoGranizo = eventosGranizo.length > 0 || alertasDe('GRANIZO').length > 0;
+  const activoLluvia = diasLluvia.length > 0 || alertasDe('LLUVIA').length > 0;
+  const ESTADOS = { HELADA: activoHelada, ZONDA: activoZonda, GRANIZO: activoGranizo, LLUVIA: activoLluvia };
+  const windDeg = nasa?.viento_dir ?? null;
 
   return (
     <div className="space-y-6">
-      {/* Header compartido: un solo selector de cuartel para las 3 señales. */}
+      {/* Header compartido: un solo selector de cuartel para las 4 señales. */}
       <div className="flex items-center justify-between flex-wrap gap-4 border-b border-[#2a3a2c]/60 pb-4">
         <div>
           <h2 className="text-xl font-black uppercase italic tracking-tight text-white flex items-center gap-2">
             <CloudSun className="w-5 h-5 text-[#9bcc44]" /> Control Climático
           </h2>
-          <p className="text-xs text-[#8a9787]">Heladas, viento Zonda y granizo — predicción local, satélite y parte oficial del SMN, todo en un lugar.</p>
+          <p className="text-xs text-[#8a9787]">Heladas, viento Zonda, granizo y lluvia — predicción local, satélite y parte oficial del SMN, todo en un lugar.</p>
         </div>
         <div className="relative">
           <Layers className="w-4 h-4 text-[#5d6f5a] absolute left-3 top-1/2 -translate-y-1/2" />
@@ -80,35 +112,60 @@ export default function TabControlClimatico() {
         </div>
       </div>
 
-      {/* Sub-navegación: mismo lenguaje visual que el toggle anual/mensual
-          de Análisis, para que el panel se sienta como un solo producto. */}
-      <div className="bg-[#18211b] border border-[#2a3a2c]/60 rounded-xl p-1 flex w-full sm:w-fit">
-        {SUBTABS.map(t => {
-          const Icon = t.icon;
-          const sel = sub === t.id;
+      {/* Acordeón: tocás una contingencia y se despliega ahí mismo con su
+          mapa + sus alertas + su panel — nada se oculta detrás de una
+          pestaña separada. */}
+      <div className="space-y-3">
+        {HERRAMIENTAS.map((h) => {
+          const Icon = h.icon;
+          const abiertaAhora = abierta === h.id;
+          const activo = ESTADOS[h.id];
+          const color = COLOR_CATEGORIA[h.id];
           return (
-            <button key={t.id} onClick={() => setSub(t.id)}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${sel ? 'bg-[#9bcc44]/20 text-[#9bcc44] border border-[#9bcc44]/30' : 'text-[#8a9787] hover:text-[#cdd8c8] border border-transparent'}`}>
-              <Icon size={13} /> {t.label}
-            </button>
+            <div key={h.id} className="bg-[#18211b] border rounded-2xl overflow-hidden transition-colors"
+              style={{ borderColor: abiertaAhora ? color + '66' : '#2a3a2c99' }}>
+              <button onClick={() => setAbierta(abiertaAhora ? null : h.id)}
+                className="w-full flex items-center gap-3 p-4 sm:p-5 text-left">
+                <div className="p-2 rounded-xl shrink-0" style={{ backgroundColor: color + '18', border: `1px solid ${color}40` }}>
+                  <Icon size={18} style={{ color }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black uppercase tracking-wide text-white">{h.label}</p>
+                  <p className="text-[11px] text-[#8a9787] truncate">{h.desc}</p>
+                </div>
+                <span className={`hidden sm:flex items-center gap-1 text-[9px] font-black uppercase px-2.5 py-1 rounded-full border shrink-0 ${
+                  activo ? 'text-rose-300 bg-rose-500/10 border-rose-500/30' : 'text-[#9bcc44] bg-[#9bcc44]/10 border-[#9bcc44]/25'}`}>
+                  {activo ? <ShieldAlert size={10} /> : <CheckCircle2 size={10} />} {activo ? 'Atención' : 'OK'}
+                </span>
+                <ChevronDown size={18} className={`text-[#5d6f5a] shrink-0 transition-transform ${abiertaAhora ? 'rotate-180' : ''}`} />
+              </button>
+
+              {abiertaAhora && (
+                <div className="px-4 sm:px-5 pb-5 pt-1 space-y-5 border-t border-[#2a3a2c]/50">
+                  {loading ? (
+                    <div className="h-48 flex items-center justify-center"><Loader2 className="animate-spin text-[#9bcc44]" /></div>
+                  ) : (
+                    <>
+                      <ContingenciaMapa categoria={h.id} cuarteles={cuarteles} alertas={alertasDe(h.id)}
+                        activo={activo} windDeg={h.id === 'ZONDA' ? windDeg : null}
+                        radarPorDefecto={h.id === 'GRANIZO' || h.id === 'LLUVIA'} />
+                      {h.id === 'HELADA' && <ContenidoHeladas helada={helada} nasa={nasa} clima={clima} />}
+                      {h.id === 'ZONDA' && <ContenidoZonda zonda={zonda} windDeg={windDeg} />}
+                      {h.id === 'GRANIZO' && <ContenidoConvectivo tipo="GRANIZO" eventos={eventosGranizo} fuente={clima?.fuente} />}
+                      {h.id === 'LLUVIA' && <ContenidoConvectivo tipo="LLUVIA" eventos={diasLluvia} fuente={clima?.fuente} />}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
-
-      {loading ? (
-        <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-[#9bcc44]" /></div>
-      ) : (
-        <>
-          {sub === 'heladas' && <PanelHeladas helada={helada} nasa={nasa} clima={clima} />}
-          {sub === 'zonda' && <PanelZonda zonda={zonda} />}
-          {sub === 'granizo' && <PanelGranizo eventosGranizo={eventosGranizo} fuente={clima?.fuente} />}
-        </>
-      )}
     </div>
   );
 }
 
-function PanelHeladas({ helada, nasa, clima }) {
+function ContenidoHeladas({ helada, nasa, clima }) {
   const nivel = helada?.risk_level || 'LOW';
   const nivelCfg = {
     CRITICAL: { ring: 'border-rose-500/40 bg-rose-500/5', icon: ShieldAlert, ic: 'text-rose-400 animate-pulse', txt: 'text-rose-200', label: 'CRÍTICO' },
@@ -163,7 +220,7 @@ function PanelHeladas({ helada, nasa, clima }) {
           <p className="text-sm text-[#cdd8c8] italic mt-5 leading-relaxed">"{helada.message}"</p>
           <p className="text-[10px] text-[#5d6f5a] mt-4 border-t border-[#2a3a2c]/50 pt-3 leading-relaxed">
             Estimación por enfriamiento radiativo con piso en el punto de rocío. Vale para noche despejada y sin viento.
-            Es soporte a la decisión — cruzalo con el parte del SMN / Contingencias.
+            Es soporte a la decisión — cruzalo con el parte del SMN / mapa de arriba.
           </p>
         </div>
       )}
@@ -228,7 +285,7 @@ function PanelHeladas({ helada, nasa, clima }) {
   );
 }
 
-function PanelZonda({ zonda }) {
+function ContenidoZonda({ zonda, windDeg }) {
   if (!zonda) return null;
   const critico = zonda.risk_level === 'CRITICAL';
   const moderado = zonda.risk_level === 'MEDIUM';
@@ -283,57 +340,77 @@ function PanelZonda({ zonda }) {
         )}
 
         <p className="text-[11px] text-[#5d6f5a] mt-4 leading-relaxed">
-          Detección por firma termodinámica (humedad + temperatura en vivo). La presión es referencial
-          hasta reemplazar el sensor BMP280. Soporte a la decisión: cruzá con el parte oficial del SMN.
+          Detección por firma termodinámica (humedad + temperatura en vivo). La dirección del viento en el mapa de
+          arriba es un dato satelital real (NASA POWER){windDeg == null ? ', sin lectura disponible en este momento' : ''}.
+          Soporte a la decisión: cruzá con el parte oficial del SMN.
         </p>
       </div>
     </div>
   );
 }
 
-function PanelGranizo({ eventosGranizo, fuente }) {
+// OJO: Tailwind necesita las clases completas y literales en el código
+// fuente para poder generarlas (no arma "bg-" + variable en runtime), por
+// eso cada tipo lleva su propio set de clases ya armadas en vez de
+// interpolar un nombre de color.
+const CONVECTIVO_CFG = {
+  GRANIZO: {
+    icon: CloudRain, titulo: 'Posible evento de granizo',
+    sinRiesgo: 'No se detectan condiciones convectivas de granizo para los próximos días.',
+    caja: 'bg-sky-950/20 border-sky-500/30', iconoTxt: 'text-sky-400',
+    badge: 'text-sky-300 bg-sky-500/10 border-sky-500/30', cuerpo: 'text-sky-100',
+  },
+  LLUVIA: {
+    icon: CloudDrizzle, titulo: 'Posible evento de lluvia/tormenta',
+    sinRiesgo: 'No se detectan condiciones de lluvia o tormenta relevantes para los próximos días.',
+    caja: 'bg-blue-950/20 border-blue-500/30', iconoTxt: 'text-blue-400',
+    badge: 'text-blue-300 bg-blue-500/10 border-blue-500/30', cuerpo: 'text-blue-100',
+  },
+};
+
+function ContenidoConvectivo({ tipo, eventos, fuente }) {
+  const cfg = CONVECTIVO_CFG[tipo];
+  const Icon = cfg.icon;
   return (
-    <div className="space-y-4">
-      <AlertasMapa />
-
-      <div className="pt-2">
-        <div className="flex items-center gap-2 mb-3">
-          <Radio className="text-[#9bcc44]" size={14} />
-          <h4 className="text-xs font-black uppercase tracking-widest text-[#8a9787]">
-            Pronóstico convectivo propio · fuente {fuente || '—'}
-          </h4>
-        </div>
-
-        {eventosGranizo.length === 0 ? (
-          <div className="bg-[#18211b] border border-[#2a3a2c] rounded-2xl p-8 text-center">
-            <CheckCircle size={32} className="mx-auto mb-2 text-[#9bcc44]" />
-            <p className="text-[#5d6f5a] text-sm">No se detectan condiciones convectivas de granizo para los próximos días.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {eventosGranizo.map((d, i) => (
-              <div key={i} className="bg-sky-950/20 border border-sky-500/30 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-3 flex-wrap">
-                  <CloudRain className="text-sky-400" />
-                  <h3 className="font-black uppercase text-white">Posible evento: {d.fecha}</h3>
-                  <span className="ml-auto text-[10px] text-sky-300 bg-sky-500/10 border border-sky-500/30 px-2.5 py-1 rounded-full font-bold uppercase flex items-center gap-2">
-                    <Thermometer size={11} /> {d.temp_max}° · <Droplet size={11} /> {d.humedad}% · {d.prob_lluvia}% lluvia
-                  </span>
-                </div>
-                {(d.riesgos || []).filter(r => r.tipo === 'GRANIZO').map((r, j) => (
-                  <p key={j} className="text-sm text-sky-100">{r.detalle}</p>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <p className="text-[11px] text-[#5d6f5a] bg-[#18211b] border border-[#2a3a2c]/40 rounded-xl p-4 mt-4">
-          El radar y las alertas oficiales del SMN (arriba) son la fuente de verdad para decisiones de defensa
-          antigranizo. El pronóstico convectivo propio (abajo) estima la probabilidad con humedad, temperatura y
-          lluvia — es un complemento, no lo reemplaza.
-        </p>
+    <div className="pt-1">
+      <div className="flex items-center gap-2 mb-3">
+        <Radio className="text-[#9bcc44]" size={14} />
+        <h4 className="text-xs font-black uppercase tracking-widest text-[#8a9787]">
+          Pronóstico convectivo propio · fuente {fuente || '—'}
+        </h4>
       </div>
+
+      {eventos.length === 0 ? (
+        <div className="bg-[#18211b] border border-[#2a3a2c] rounded-2xl p-8 text-center">
+          <CheckCircle size={32} className="mx-auto mb-2 text-[#9bcc44]" />
+          <p className="text-[#5d6f5a] text-sm">{cfg.sinRiesgo}</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {eventos.map((d, i) => (
+            <div key={i} className={`border rounded-2xl p-6 ${cfg.caja}`}>
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                <Icon className={cfg.iconoTxt} />
+                <h3 className="font-black uppercase text-white">{cfg.titulo}: {d.fecha}</h3>
+                <span className={`ml-auto text-[10px] px-2.5 py-1 rounded-full border font-bold uppercase flex items-center gap-2 ${cfg.badge}`}>
+                  <Thermometer size={11} /> {d.temp_max}° · <Droplet size={11} /> {d.humedad}% · {d.prob_lluvia}% lluvia
+                </span>
+              </div>
+              {tipo === 'GRANIZO'
+                ? (d.riesgos || []).filter(r => r.tipo === 'GRANIZO').map((r, j) => (
+                  <p key={j} className={`text-sm ${cfg.cuerpo}`}>{r.detalle}</p>
+                ))
+                : <p className={`text-sm ${cfg.cuerpo}`}>Probabilidad de lluvia {d.prob_lluvia}%, con {d.humedad}% de humedad — condiciones favorables a precipitación.</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-[11px] text-[#5d6f5a] bg-[#18211b] border border-[#2a3a2c]/40 rounded-xl p-4 mt-4">
+        El radar y las alertas oficiales del SMN (mapa de arriba) son la fuente de verdad para decisiones de defensa.
+        El pronóstico convectivo propio (abajo) estima la probabilidad con humedad, temperatura y lluvia — es un
+        complemento, no lo reemplaza.
+      </p>
     </div>
   );
 }
