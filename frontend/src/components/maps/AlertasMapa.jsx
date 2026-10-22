@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Polygon, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import apiService from '../../services/api';
+import { nombreCuartel } from '../../utils/nombreCuartel';
+import { crearIconoNodoVivo } from '../../utils/nodoVivoIcon';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+
+const ICONO_NODO_VIVO = crearIconoNodoVivo(36);
 
 const CENTRO_MENDOZA = [-33.2, -68.95];
 
@@ -28,7 +32,8 @@ function formatearFecha(iso) {
 // medio país): así el mapa siempre arranca centrado en tus fincas, bien de
 // cerca. Usa los vértices reales de la geocerca cuando ya está marcada (más
 // preciso que el punto GPS solo) y el mismo maxZoom que VineyardMap.jsx para
-// que el encuadre se sienta igual en todas las vistas con mapa.
+// que el encuadre se sienta igual en todas las vistas con mapa — lo bastante
+// alto para distinguir bien el ícono de un solo nodo real.
 function AjustarVista({ cuarteles }) {
   const map = useMap();
   useEffect(() => {
@@ -40,7 +45,7 @@ function AjustarVista({ cuarteles }) {
     );
     if (!puntos.length) return;
     const bounds = L.latLngBounds(puntos);
-    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
+    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 18 });
   }, [cuarteles, map]);
   return null;
 }
@@ -133,7 +138,7 @@ export default function AlertasMapa() {
                           Severidad: {a.severidad || '—'}<br />
                           Vence: {formatearFecha(a.vence)}
                           {a.cuarteles_afectados?.length > 0 && (
-                            <><br /><br /><b>Afecta:</b> {a.cuarteles_afectados.map((v) => v.replace(/_/g, ' ')).join(', ')}</>
+                            <><br /><br /><b>Afecta:</b> {a.cuarteles_afectados.map((v) => nombreCuartel(v)).join(', ')}</>
                           )}
                         </div>
                       </Popup>
@@ -142,13 +147,20 @@ export default function AlertasMapa() {
                 }))}
 
                 {cuarteles.map((c) => (
-                  c.geocerca && c.geocerca.length >= 3 ? (
-                    <Polygon key={c.vinedo_id}
-                      positions={c.geocerca.map((p) => [p.lat ?? p[0], p.lon ?? p[1]])}
-                      pathOptions={{ color: '#9bcc44', weight: 2, fillColor: '#9bcc44', fillOpacity: 0.15 }}>
-                      <Popup>{(c.vinedo_id || '').replace(/_/g, ' ')}</Popup>
-                    </Polygon>
-                  ) : null
+                  <React.Fragment key={c.vinedo_id}>
+                    {c.geocerca && c.geocerca.length >= 3 && (
+                      <Polygon
+                        positions={c.geocerca.map((p) => [p.lat ?? p[0], p.lon ?? p[1]])}
+                        pathOptions={{ color: '#9bcc44', weight: 2, fillColor: '#9bcc44', fillOpacity: 0.15 }}>
+                        <Popup>{nombreCuartel(c.vinedo_id)}</Popup>
+                      </Polygon>
+                    )}
+                    {/* Ícono "en vivo" en el punto GPS real del nodo — así siempre
+                        se ve algo en el mapa, tenga o no geocerca marcada a mano. */}
+                    <Marker position={[c.lat, c.lon]} icon={ICONO_NODO_VIVO}>
+                      <Popup>{nombreCuartel(c.vinedo_id)}</Popup>
+                    </Marker>
+                  </React.Fragment>
                 ))}
               </MapContainer>
             )}

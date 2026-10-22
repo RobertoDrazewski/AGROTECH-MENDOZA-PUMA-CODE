@@ -118,6 +118,30 @@ def cargar_geocercas_db() -> dict:
         return {}
 
 
+def cargar_ultima_posicion_db(vinedo_id: str):
+    """Devuelve (lat, lon) de la última lectura REAL con GPS válido que mandó
+    este nodo, o None si todavía no hay ninguna en MySQL. Se usa al arrancar
+    el servidor para que el nodo recupere su posición real en vez de volver
+    siempre a la aproximada hardcodeada de respaldo (eso era lo que causaba
+    la discrepancia de GPS en cada redeploy de Railway: /ingest la corregía
+    en RAM en segundos, pero esa corrección se perdía al reiniciar)."""
+    from sqlalchemy import text
+    try:
+        eng = get_engine()
+        with eng.connect() as conn:
+            row = conn.execute(text("""
+                SELECT lat, lon FROM telemetria
+                WHERE vinedo_id = :v AND lat IS NOT NULL AND lon IS NOT NULL
+                ORDER BY leido_en DESC LIMIT 1
+            """), {"v": vinedo_id}).fetchone()
+        if row and row[0] is not None and row[1] is not None:
+            return (float(row[0]), float(row[1]))
+        return None
+    except Exception as e:
+        print(f"--> [DB] No se pudo cargar la última posición real de {vinedo_id}: {e}")
+        return None
+
+
 def ya_hay_datos_nasa():
     """True si la tabla telemetria ya tiene lecturas con source='historical_nasa'.
     Se usa para sembrar el historico real UNA sola vez (idempotente): en cada

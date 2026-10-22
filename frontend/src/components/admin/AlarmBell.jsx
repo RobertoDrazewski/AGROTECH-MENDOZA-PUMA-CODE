@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Bell, X, ShieldAlert, Wind, CloudRain, History, AlertTriangle } from 'lucide-react';
 import apiService from '../../services/api';
+import { nombreCuartel } from '../../utils/nombreCuartel';
 
 const ICONOS = { HELADA: ShieldAlert, ZONDA: Wind, GRANIZO: CloudRain, ALERTA_SMN: AlertTriangle };
 const COLORES = {
@@ -138,7 +139,7 @@ export default function AlarmBell() {
                           <Icon size={16} className={`${cfg.text} mt-0.5 shrink-0`} />
                           <div className="min-w-0">
                             <p className={`text-xs font-black uppercase ${cfg.text}`}>
-                              {a.tipo} · {(a.vinedo_id || '').replace(/_/g, ' ')}
+                              {a.tipo} · {nombreCuartel(a.vinedo_id)}
                             </p>
                             <p className="text-[11px] text-[#cdd8c8] mt-0.5">{a.mensaje}</p>
                           </div>
@@ -167,7 +168,7 @@ export default function AlarmBell() {
                         <div key={a.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-[#121a14] border border-[#2a3a2c]/40">
                           <div className="min-w-0">
                             <p className={`text-[10px] font-black uppercase ${cfg.text}`}>
-                              {a.tipo} · {(a.vinedo_id || '').replace(/_/g, ' ')}
+                              {a.tipo} · {nombreCuartel(a.vinedo_id)}
                             </p>
                             <p className="text-[10px] text-[#8a9787] truncate">{a.mensaje}</p>
                           </div>

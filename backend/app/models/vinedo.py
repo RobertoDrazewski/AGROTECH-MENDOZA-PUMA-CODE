@@ -66,15 +66,19 @@ class VinedoStorage:
 
     def register_node_cuartel(self, vinedo_id: str, lat: float, lon: float,
                               variedad: str = "Nodo de prueba",
-                              hectareas: float = 0.1, zona: str = "Patio") -> None:
-        """Crea (si no existe) un cuartel asociado a un NODO REAL ubicado por
-        GPS. Lo usa el endpoint /ingest la primera vez que un nodo Heltec
-        reporta su posicion. Marca el cuartel como is_hardware=True para que el
-        dashboard lo muestre como 'sensor real' y no como demo."""
+                              hectareas: float = 0.1, zona: str = "Patio",
+                              nombre: str = None) -> None:
+        """Crea o actualiza un cuartel asociado a un NODO REAL ubicado por
+        GPS. Lo usa el endpoint /ingest cada vez que un nodo Heltec reporta su
+        posición, y main.py al arrancar el servidor. Marca el cuartel como
+        is_hardware=True para que el dashboard lo muestre como 'sensor real' y
+        no como demo. 'nombre' es el nombre a mostrar en el panel (ej. 'Nodo
+        DEMO'); el vinedo_id interno NO cambia, para no romper el firmware."""
         if vinedo_id not in self.meta:
             self.meta[vinedo_id] = {}
         self.meta[vinedo_id].update({
             "vinedo_id": vinedo_id,
+            "nombre": nombre or self.meta[vinedo_id].get("nombre") or vinedo_id,
             "variedad": self.meta[vinedo_id].get("variedad", variedad),
             "hectareas": self.meta[vinedo_id].get("hectareas", hectareas),
             "lat": lat,

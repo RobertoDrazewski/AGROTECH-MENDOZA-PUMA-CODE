@@ -5,50 +5,19 @@ import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
 import apiService from '../../services/api';
+import { nombreCuartel } from '../../utils/nombreCuartel';
+import { crearIconoNodoVivo } from '../../utils/nodoVivoIcon';
 import { ShieldAlert, CheckCircle2, Waves, MapPin, Pencil, Check, X, Undo2 } from 'lucide-react';
 
-// Leaflet + bundlers: hay que indicar las imágenes del pin a mano una sola vez.
+// Leaflet + bundlers: hay que indicar las imágenes del pin a mano una sola vez
+// (se usa como fallback si por algún motivo el ícono custom no carga).
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
 
 // Centro aproximado de la zona vitivinícola de Mendoza (entre los 4 oasis).
 const CENTRO_MENDOZA = [-33.2, -68.95];
 
-// Vértices reales de los viñedos cargados manualmente
-const GEOCERCAS_REALES = {
-  "Cuartel_Malbec_1": [
-    [-32.957419, -68.745316],
-    [-32.957729, -68.744339],
-    [-32.959332, -68.745037],
-    [-32.959224, -68.745385],
-    [-32.960020, -68.745793],
-    [-32.959795, -68.746501]
-  ],
-  "Cuartel_Cabernet_2": [
-    [-33.160630, -68.919275],
-    [-33.162345, -68.911314],
-    [-33.164124, -68.911475],
-    [-33.162372, -68.919704]
-  ],
-  "Cuartel_Chardonnay_3": [
-    [-33.158671, -68.917977],
-    [-33.160127, -68.911164],
-    [-33.162210, -68.911271],
-    [-33.160638, -68.918556]
-  ],
-  "Cuartel_Syrah_4": [
-    [-33.568776, -69.025420],
-    [-33.568096, -69.022727],
-    [-33.572816, -69.024712],
-    [-33.572172, -69.027008]
-  ],
-  "Cuartel_Bonarda_5": [
-    [-33.349958, -69.176238],
-    [-33.349304, -69.175809],
-    [-33.350156, -69.173040],
-    [-33.351088, -69.173266]
-  ]
-};
+const ICONO_NODO_VIVO = crearIconoNodoVivo(36);
 
 // Genera un cuadrado aproximado (geocerca) como fallback para viñedos
 // nuevos que aún no tengan geocerca real asignada.
@@ -80,9 +49,9 @@ function AjustarVista({ cuarteles }) {
     const bounds = L.latLngBounds(cuarteles.map((c) => [c.lat, c.lon]));
     // Con el mapa más grande (a todo el ancho) hay más píxeles disponibles
     // para el mismo territorio, así que fitBounds ya elige más zoom solo.
-    // Bajamos el padding y subimos el techo de zoom para acercar un poco
-    // más sin perder ningún punto de vista.
-    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
+    // maxZoom alto (18) para que, con un solo nodo, se vea bien de cerca el
+    // ícono — no un puntito perdido en medio del paisaje.
+    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 18 });
   }, [cuarteles, map]);
   return null;
 }
@@ -193,7 +162,7 @@ export default function VineyardMap({ vinedos, selectedVinedo, setSelectedVinedo
 
       {editando && (
         <p className="text-[10px] text-[#9bcc44] -mt-2 mb-2">
-          Hacé clic sobre el satélite siguiendo las esquinas reales de "{(selectedVinedo || '').replace(/_/g, ' ')}". Necesitás al menos 3 puntos.
+          Hacé clic sobre el satélite siguiendo las esquinas reales de "{nombreCuartel(selectedVinedo)}". Necesitás al menos 3 puntos.
         </p>
       )}
 
@@ -224,14 +193,11 @@ export default function VineyardMap({ vinedos, selectedVinedo, setSelectedVinedo
               const st = estadoCuartel(c.vinedo_id, selectedVinedo, currentTemp);
               const sel = c.vinedo_id === selectedVinedo;
               
-              // Prioridad 1: Coordenadas reales estáticas. 
-              // Prioridad 2: Coordenadas traídas del backend (API).
-              // Fallback: Geocerca aproximada.
-              const geocerca = GEOCERCAS_REALES[c.vinedo_id] 
-                ? GEOCERCAS_REALES[c.vinedo_id]
-                : (c.geocerca && c.geocerca.length >= 3
-                  ? c.geocerca.map((p) => [p.lat ?? p[0], p.lon ?? p[1]])
-                  : geocercaAproximada(c.lat, c.lon, c.hectareas));
+              // Geocerca real marcada a mano (vía backend/MySQL) si existe,
+              // si no, un cuadrado aproximado alrededor del punto GPS.
+              const geocerca = c.geocerca && c.geocerca.length >= 3
+                ? c.geocerca.map((p) => [p.lat ?? p[0], p.lon ?? p[1]])
+                : geocercaAproximada(c.lat, c.lon, c.hectareas);
 
               return (
                 <React.Fragment key={c.vinedo_id}>
@@ -247,11 +213,12 @@ export default function VineyardMap({ vinedos, selectedVinedo, setSelectedVinedo
                   />
                   <Marker
                     position={[c.lat, c.lon]}
+                    icon={ICONO_NODO_VIVO}
                     eventHandlers={{ click: () => !editando && vinedos.includes(c.vinedo_id) && setSelectedVinedo(c.vinedo_id) }}
                   >
                     <Popup>
                       <div style={{ fontSize: 12, color: '#18211b' }}>
-                        <b>{(c.vinedo_id || '').replace(/_/g, ' ')}</b><br />
+                        <b>{nombreCuartel(c.vinedo_id)}</b><br />
                         {c.variedad} · {c.hectareas} ha<br />
                         {c.zona}
                       </div>
@@ -276,7 +243,7 @@ export default function VineyardMap({ vinedos, selectedVinedo, setSelectedVinedo
               <Icon className="w-4 h-4 shrink-0" style={{ color: sel ? '#9bcc44' : st.color }} />
               <div className="truncate">
                 <span className={`block font-semibold ${sel ? 'text-white' : 'text-[#cdd8c8]'}`}>
-                  {id.replace('Cuartel_', '').replace('_', ' ')}
+                  {nombreCuartel(id).replace('Cuartel ', '')}
                 </span>
                 <span className="text-[9px] text-[#5d6f5a] block -mt-0.5">
                   {meta?.zona || st.label}

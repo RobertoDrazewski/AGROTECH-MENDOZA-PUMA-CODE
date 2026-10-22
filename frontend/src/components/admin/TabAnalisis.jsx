@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../../services/api';
+import { nombreCuartel } from '../../utils/nombreCuartel';
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ComposedChart, Area
@@ -183,7 +184,7 @@ export default function TabAnalisis() {
             <Layers className="w-4 h-4 text-[#5d6f5a] absolute left-3 top-1/2 -translate-y-1/2" />
             <select value={selected} onChange={(e) => setSelected(e.target.value)}
               className="w-52 bg-[#18211b] border border-[#2a3a2c] rounded-xl pl-9 pr-8 py-2.5 text-xs font-bold text-[#cdd8c8] focus:outline-none focus:border-[#9bcc44] appearance-none cursor-pointer transition-colors">
-              {vinedos.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+              {vinedos.map(v => <option key={v} value={v}>{nombreCuartel(v)}</option>)}
             </select>
           </div>
         </div>

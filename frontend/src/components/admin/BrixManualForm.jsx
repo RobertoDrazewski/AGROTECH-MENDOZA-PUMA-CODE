@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../../services/api';
+import { nombreCuartel } from '../../utils/nombreCuartel';
 import { Beaker, Layers, CheckCircle2, Loader2 } from 'lucide-react';
 
 export default function BrixManualForm() {
@@ -64,7 +65,7 @@ export default function BrixManualForm() {
           <Layers className="w-4 h-4 text-[#5d6f5a] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <select value={cuartel} onChange={(e) => setCuartel(e.target.value)}
             className="w-full bg-[#121a14] border border-[#2a3a2c] rounded-xl pl-9 pr-4 py-2.5 text-xs font-semibold text-[#cdd8c8] focus:outline-none focus:border-[#9bcc44] appearance-none cursor-pointer">
-            {vinedos.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+            {vinedos.map(v => <option key={v} value={v}>{nombreCuartel(v)}</option>)}
           </select>
         </div>
         <input type="number" step="0.1" value={brix} onChange={(e) => setBrix(e.target.value)} required

@@ -11,7 +11,21 @@ from app.models.vinedo import db_vinedos
 
 
 class VinedoSimulator:
-    def __init__(self):
+    def __init__(self, con_demo: bool = False):
+        # Sin datos de DEMO por defecto: el proyecto ahora muestra SOLO el
+        # nodo de hardware real (Patio_Casa / "Nodo DEMO" en el panel). Los 5
+        # cuarteles ficticios ya no se registran solos al importar este
+        # módulo — quedan disponibles en registrar_cuarteles_demo() por si
+        # algún día se quiere volver a mostrar una demo con datos de ejemplo.
+        self.cuarteles = {}
+        self.current_simulated_time = datetime.now()
+        if con_demo:
+            self.registrar_cuarteles_demo()
+
+    def registrar_cuarteles_demo(self):
+        """Registra los 5 cuarteles ficticios de DEMO (datos inventados) y
+        sus geocercas. YA NO se llama automáticamente — se deja como método
+        aparte, reversible, en vez de borrar el código."""
         # Cuarteles alineados con el mapa del dashboard
         self.cuarteles = {
             "Cuartel_Malbec_1":     {"brix": 21.2, "ph": 3.15, "humedad_suelo": 32.0},
@@ -20,7 +34,7 @@ class VinedoSimulator:
             "Cuartel_Syrah_4":      {"brix": 20.9, "ph": 3.12, "humedad_suelo": 26.0},
             "Cuartel_Bonarda_5":    {"brix": 20.2, "ph": 3.08, "humedad_suelo": 30.0},
         }
-        
+
         # Registrar metadatos geográficos originales en memoria
         meta = {
             "Cuartel_Malbec_1":     ("Malbec", 4.2, -32.958598, -68.745336, "Maipú"),
@@ -29,38 +43,36 @@ class VinedoSimulator:
             "Cuartel_Syrah_4":      ("Syrah", 3.8, -33.570331, -69.024776, "Tunuyán"),
             "Cuartel_Bonarda_5":    ("Bonarda", 3.5, -33.350075, -69.174682, "Tupungato"),
         }
-        
+
         for vid, (var, ha, lat, lon, zona) in meta.items():
             db_vinedos.register_cuartel(vid, var, ha, lat, lon, zona)
 
         # Inyectar las geocercas usando el formato nativo exacto esperado por el sistema [{lat, lon}]
         geocercas = {
             "Cuartel_Malbec_1": [
-                {"lat": -32.957419, "lon": -68.745316}, {"lat": -32.957729, "lon": -68.744339}, 
-                {"lat": -32.959332, "lon": -68.745037}, {"lat": -32.959224, "lon": -68.745385}, 
+                {"lat": -32.957419, "lon": -68.745316}, {"lat": -32.957729, "lon": -68.744339},
+                {"lat": -32.959332, "lon": -68.745037}, {"lat": -32.959224, "lon": -68.745385},
                 {"lat": -32.960020, "lon": -68.745793}, {"lat": -32.959795, "lon": -68.746501}
             ],
             "Cuartel_Cabernet_2": [
-                {"lat": -33.160630, "lon": -68.919275}, {"lat": -33.162345, "lon": -68.911314}, 
+                {"lat": -33.160630, "lon": -68.919275}, {"lat": -33.162345, "lon": -68.911314},
                 {"lat": -33.164124, "lon": -68.911475}, {"lat": -33.162372, "lon": -68.919704}
             ],
             "Cuartel_Chardonnay_3": [
-                {"lat": -33.158671, "lon": -68.917977}, {"lat": -33.160127, "lon": -68.911164}, 
+                {"lat": -33.158671, "lon": -68.917977}, {"lat": -33.160127, "lon": -68.911164},
                 {"lat": -33.162210, "lon": -68.911271}, {"lat": -33.160638, "lon": -68.918556}
             ],
             "Cuartel_Syrah_4": [
-                {"lat": -33.568776, "lon": -69.025420}, {"lat": -33.568096, "lon": -69.022727}, 
+                {"lat": -33.568776, "lon": -69.025420}, {"lat": -33.568096, "lon": -69.022727},
                 {"lat": -33.572816, "lon": -69.024712}, {"lat": -33.572172, "lon": -69.027008}
             ],
             "Cuartel_Bonarda_5": [
-                {"lat": -33.349958, "lon": -69.176238}, {"lat": -33.349304, "lon": -69.175809}, 
+                {"lat": -33.349958, "lon": -69.176238}, {"lat": -33.349304, "lon": -69.175809},
                 {"lat": -33.350156, "lon": -69.173040}, {"lat": -33.351088, "lon": -69.173266}
             ]
         }
         for vid, puntos in geocercas.items():
             db_vinedos.set_geocerca(vid, puntos)
-
-        self.current_simulated_time = datetime.now()
 
     def _simular_clima(self, hora: int) -> tuple:
         temp_base, amplitud = 16.0, 9.0
@@ -131,18 +143,24 @@ class VinedoSimulator:
             return False
 
         def construir_rec(vinedo_id, f):
-            return {
+            rec = {
                 "vinedo_id": vinedo_id,
                 "timestamp": f["timestamp"],
                 "source": "historical_nasa",
                 "temp_aire": f["temp_aire"],
                 "humedad_aire": f["humedad_aire"],
                 "presion_atm": f["presion_atm"],
-                # NASA no mide suelo/uva: estos los proyecta el simulador.
-                "humedad_suelo": self.cuarteles.get(vinedo_id, {}).get("humedad_suelo", 30.0),
-                "uva_brix": self.cuarteles.get(vinedo_id, {}).get("brix", 20.0),
-                "uva_ph": self.cuarteles.get(vinedo_id, {}).get("ph", 3.1),
             }
+            # NASA no mide suelo/uva. El simulador los proyecta SOLO para los
+            # cuarteles de DEMO (datos ficticios) — para un nodo de hardware
+            # real (ej. Patio_Casa, que no está en self.cuarteles) no se
+            # inventan estos valores: mejor vacíos que falsos.
+            if vinedo_id in self.cuarteles:
+                estado = self.cuarteles[vinedo_id]
+                rec["humedad_suelo"] = estado.get("humedad_suelo", 30.0)
+                rec["uva_brix"] = estado.get("brix", 20.0)
+                rec["uva_ph"] = estado.get("ph", 3.1)
+            return rec
 
         ultimo_estado = {}
         total_mem = 0

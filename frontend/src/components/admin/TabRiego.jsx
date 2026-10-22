@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiService from '../../services/api';
 import { Droplets, Power, PowerOff, Cpu, Loader2, Layers, CheckCircle2, AlertCircle } from 'lucide-react';
+import { nombreCuartel } from '../../utils/nombreCuartel';
 
 export default function TabRiego() {
   const [vinedos, setVinedos] = useState([]);
@@ -46,7 +47,7 @@ export default function TabRiego() {
           <Layers className="w-4 h-4 text-[#5d6f5a] absolute left-3 top-1/2 -translate-y-1/2" />
           <select value={selected} onChange={(e) => setSelected(e.target.value)}
             className="w-60 bg-[#18211b] border border-[#2a3a2c] rounded-xl pl-9 pr-4 py-2.5 text-xs font-semibold text-[#cdd8c8] focus:outline-none focus:border-[#9bcc44] appearance-none cursor-pointer">
-            {vinedos.map(v => <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>)}
+            {vinedos.map(v => <option key={v} value={v}>{nombreCuartel(v)}</option>)}
           </select>
         </div>
       </div>

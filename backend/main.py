@@ -60,17 +60,11 @@ def sembrar_nasa_en_segundo_plano():
         print(f"--> [NASA] Falló la siembra ({e}); uso historial sintético.")
         vinedo_sim.inicializar_con_historial(horas_atras=48)
 
-    # Retrocarga de Brix manual simulado para 2026 (1 lectura/mes, incluye
-    # el nodo real Patio_Casa). Idempotente: solo corre una vez.
-    try:
-        from app.db.database import ya_hay_brix_2026_seed, save_telemetry_db as _guardar_brix
-        ya_2026 = ya_hay_brix_2026_seed() if persist else False
-        vinedo_sim.simular_brix_2026_manual(persist_fn=(_guardar_brix if persist else None),
-                                            ya_sembrado=ya_2026)
-    except Exception as e:
-        print(f"--> [BRIX 2026] No se pudo sembrar: {e}")
-
-    threading.Thread(target=run_simulator, daemon=True).start()
+    # Ya no se siembra Brix manual simulado ni se arranca el simulador
+    # sintético: el proyecto corre con datos 100% reales (hardware Heltec).
+    # run_simulator() y simular_brix_2026_manual() quedan definidas pero sin
+    # llamarse — reversible por si algún día se quiere volver a una demo con
+    # datos de ejemplo, en vez de borrar el código.
 
 
 @asynccontextmanager
@@ -83,11 +77,6 @@ async def lifespan(app: FastAPI):
             with get_engine().begin() as conn:
                 conn.execute(text("""
                     INSERT IGNORE INTO cuarteles (vinedo_id, variedad, hectareas, zona) VALUES
-                    ('Cuartel_Malbec_1', 'Malbec', 4.2, 'Maipú'),
-                    ('Cuartel_Cabernet_2', 'Cabernet Sauvignon', 3.1, 'Luján de Cuyo'),
-                    ('Cuartel_Chardonnay_3', 'Chardonnay', 2.4, 'Agrelo'),
-                    ('Cuartel_Syrah_4', 'Syrah', 3.8, 'Tunuyán'),
-                    ('Cuartel_Bonarda_5', 'Bonarda', 3.5, 'Tupungato'),
                     ('Patio_Casa', 'Hardware Heltec (real)', 0.10, 'Patio - Maipú');
                 """))
             print("--> [DB] Sincronización de cuarteles ejecutada en MySQL.")
@@ -161,12 +150,36 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"--> [DB] No se pudieron restaurar las geocercas: {e}")
 
-    # 1b. Pre-registrar el NODO REAL del patio (hardware).
+    # 1b. Pre-registrar el NODO REAL del patio (hardware) — el único nodo
+    # que existe en el proyecto, se muestra en el panel como "Nodo DEMO"
+    # (vinedo_id interno sigue siendo 'Patio_Casa' para no romper el
+    # firmware, que ya trae ese VINEDO_ID configurado).
+    #
+    # Arranca con una posición aproximada de respaldo y, si ya hay una
+    # lectura real con GPS guardada en MySQL, la pisa enseguida con la
+    # posición real — así el mapa no "salta" de vuelta a la aproximada en
+    # cada reinicio/redeploy de Railway (antes la posición real solo vivía
+    # en RAM y se perdía en cada restart, causando la discrepancia de GPS).
     try:
         db_vinedos.register_node_cuartel(
             "Patio_Casa", lat=-32.9833, lon=-68.7833,
             variedad="Hardware Heltec (real)", hectareas=0.10, zona="Patio - Maipú",
+            nombre="Nodo DEMO",
         )
+        if bool(settings.DATABASE_URL):
+            try:
+                from app.db.database import cargar_ultima_posicion_db
+                ultima = cargar_ultima_posicion_db("Patio_Casa")
+                if ultima:
+                    lat_real, lon_real = ultima
+                    db_vinedos.register_node_cuartel(
+                        "Patio_Casa", lat=lat_real, lon=lon_real,
+                        variedad="Hardware Heltec (real)", hectareas=0.10, zona="Patio - Maipú",
+                        nombre="Nodo DEMO",
+                    )
+                    print(f"--> [HW] Posición real restaurada desde MySQL: {lat_real}, {lon_real}")
+            except Exception as e:
+                print(f"--> [HW] No se pudo restaurar la última posición real (se usa la aproximada): {e}")
         print("--> [HW] Nodo de patio 'Patio_Casa' pre-registrado (hardware real).")
     except Exception as e:
         print(f"--> [HW] No se pudo pre-registrar el nodo de patio: {e}")
