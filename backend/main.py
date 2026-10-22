@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
             with get_engine().begin() as conn:
                 conn.execute(text("""
                     INSERT IGNORE INTO cuarteles (vinedo_id, variedad, hectareas, zona) VALUES
-                    ('Patio_Casa', 'Hardware Heltec (real)', 0.10, 'Patio - Maipú');
+                    ('Patio_Casa', 'Hardware Heltec (real)', 0.10, 'Maipú, Mendoza');
                 """))
             print("--> [DB] Sincronización de cuarteles ejecutada en MySQL.")
         except Exception as e:
@@ -163,7 +163,7 @@ async def lifespan(app: FastAPI):
     try:
         db_vinedos.register_node_cuartel(
             "Patio_Casa", lat=-32.9833, lon=-68.7833,
-            variedad="Hardware Heltec (real)", hectareas=0.10, zona="Patio - Maipú",
+            variedad="Hardware Heltec (real)", hectareas=0.10, zona="Maipú, Mendoza",
             nombre="Nodo DEMO",
         )
         if bool(settings.DATABASE_URL):
@@ -174,7 +174,7 @@ async def lifespan(app: FastAPI):
                     lat_real, lon_real = ultima
                     db_vinedos.register_node_cuartel(
                         "Patio_Casa", lat=lat_real, lon=lon_real,
-                        variedad="Hardware Heltec (real)", hectareas=0.10, zona="Patio - Maipú",
+                        variedad="Hardware Heltec (real)", hectareas=0.10, zona="Maipú, Mendoza",
                         nombre="Nodo DEMO",
                     )
                     print(f"--> [HW] Posición real restaurada desde MySQL: {lat_real}, {lon_real}")

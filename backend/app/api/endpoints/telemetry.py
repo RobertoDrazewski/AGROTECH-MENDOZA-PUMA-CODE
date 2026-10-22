@@ -88,7 +88,7 @@ async def ingestar_telemetria_real(payload: TelemetryCreate, request: Request):
             # Nodo nuevo: se crea solo la primera vez que reporta con GPS
             db_vinedos.register_node_cuartel(
                 data["vinedo_id"], data["lat"], data["lon"],
-                zona=data.get("node_id", "Patio"),
+                zona=data.get("node_id", "Maipú, Mendoza"),
             )
         else:
             # Cuartel ya conocido (pre-registrado): mover el marcador a la

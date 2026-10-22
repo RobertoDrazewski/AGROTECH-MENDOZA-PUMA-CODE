@@ -66,7 +66,7 @@ class VinedoStorage:
 
     def register_node_cuartel(self, vinedo_id: str, lat: float, lon: float,
                               variedad: str = "Nodo de prueba",
-                              hectareas: float = 0.1, zona: str = "Patio",
+                              hectareas: float = 0.1, zona: str = "Maipú, Mendoza",
                               nombre: str = None) -> None:
         """Crea o actualiza un cuartel asociado a un NODO REAL ubicado por
         GPS. Lo usa el endpoint /ingest cada vez que un nodo Heltec reporta su
