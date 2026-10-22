@@ -162,21 +162,22 @@ def alertas_vigentes(forzar: bool = False) -> list:
 
 
 def _puntos_de_cuartel(cuartel: dict):
-    geocerca = cuartel.get("geocerca") or []
-    puntos = []
-    if geocerca and len(geocerca) >= 3:
-        for p in geocerca:
-            if isinstance(p, dict):
-                lat, lon = p.get("lat"), p.get("lon")
-            else:
-                lat, lon = (p[0], p[1]) if len(p) >= 2 else (None, None)
-            if lat is not None and lon is not None:
-                puntos.append((lat, lon))
-    if not puntos:
-        lat, lon = cuartel.get("lat"), cuartel.get("lon")
-        if lat is not None and lon is not None:
-            puntos.append((lat, lon))
-    return puntos
+    """Punto(s) que se cruzan contra los polígonos de alerta del SMN.
+
+    OJO: usa SIEMPRE el punto GPS real del nodo (lat/lon), nunca los
+    vértices de la geocerca. Antes se usaba la geocerca cuando existía, lo
+    cual andaba bien mientras representaba una parcela chica — pero ahora
+    puede ser un polígono enorme (ej. el límite de todo el departamento de
+    Maipú, usado solo para mostrar la zona en el mapa), y cruzar sus 200+
+    vértices contra alertas provinciales del SMN daba falsos positivos todo
+    el tiempo: la campanita marcaba "alertas activas" que la pestaña de
+    Alerta Granizo (que vuelve a pedir el feed y puede caer en otro refresco
+    de caché) no mostraba, o viceversa. Con un único punto por nodo el
+    resultado es estable y consistente en todo el panel."""
+    lat, lon = cuartel.get("lat"), cuartel.get("lon")
+    if lat is not None and lon is not None:
+        return [(lat, lon)]
+    return []
 
 
 def cuarteles_en_alerta(cuarteles: list) -> list:

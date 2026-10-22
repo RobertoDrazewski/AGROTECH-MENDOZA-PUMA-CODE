@@ -83,6 +83,36 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"--> [DB] Error al sincronizar cuarteles: {e}")
 
+        # Limpieza de los datos que dejó la simulación vieja (5 cuarteles de
+        # demo: Malbec/Cabernet/Chardonnay/Syrah/Bonarda). Ya no se generan
+        # desde que el proyecto corre solo con el nodo real, pero las filas
+        # viejas seguían en MySQL y aparecían mezcladas en el histórico de
+        # alarmas del panel. Se borra automáticamente en cada arranque — es
+        # idempotente (después de la primera vez no encuentra nada que
+        # borrar), así que no depende de correr ningún script a mano.
+        try:
+            with get_engine().begin() as conn:
+                ids = [
+                    "Cuartel_Malbec_1", "Cuartel_Cabernet_2", "Cuartel_Chardonnay_3",
+                    "Cuartel_Syrah_4", "Cuartel_Bonarda_5",
+                ]
+                placeholders = ", ".join(f":v{i}" for i in range(len(ids)))
+                params = {f"v{i}": vid for i, vid in enumerate(ids)}
+                borrados = 0
+                for tabla in ("alarmas", "telemetria", "geocercas", "cuarteles"):
+                    try:
+                        res = conn.execute(text(
+                            f"DELETE FROM {tabla} WHERE vinedo_id IN ({placeholders})"
+                        ), params)
+                        borrados += res.rowcount or 0
+                    except Exception as e_tabla:
+                        # La tabla puede no existir todavía (primer arranque) — no es crítico.
+                        print(f"--> [LIMPIEZA DEMO] {tabla}: {e_tabla}")
+            if borrados:
+                print(f"--> [LIMPIEZA DEMO] {borrados} filas de los 5 cuarteles de demo borradas de MySQL.")
+        except Exception as e:
+            print(f"--> [LIMPIEZA DEMO] No se pudo limpiar los datos de la simulación vieja: {e}")
+
         # Columna nueva para observaciones de lecturas manuales (Brix a mano).
         # OJO: "ADD COLUMN IF NOT EXISTS" no es soportado (o no corrió bien) en
         # esta instancia de Aiven MySQL, y esto rompió TODOS los inserts de

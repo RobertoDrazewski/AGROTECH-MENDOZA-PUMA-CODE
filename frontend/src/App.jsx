@@ -1,8 +1,8 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import {
-  Loader2, LayoutDashboard, CloudSnow, Droplets,
-  BarChart3, Users, LogOut, Menu, X, ExternalLink, Leaf, Bug, Wind, CloudRain,
+  Loader2, LayoutDashboard, CloudSun, Droplets,
+  BarChart3, Users, LogOut, Menu, X, ExternalLink, Leaf, Bug,
 } from 'lucide-react';
 import apiService from './services/api';
 import AlarmBell from './components/admin/AlarmBell';
@@ -20,9 +20,7 @@ import LiveDemo from './components/landing/LiveDemo';
 import Contact from './components/landing/Contact';
 
 const TabTelemetria = React.lazy(() => import('./components/admin/TabTelemetria'));
-const TabHeladas    = React.lazy(() => import('./components/admin/TabHeladas'));
-const TabZonda      = React.lazy(() => import('./components/admin/TabZonda'));
-const TabGranizo    = React.lazy(() => import('./components/admin/TabGranizo')); // ← IMPORTANTE: Agregada importación
+const TabControlClimatico = React.lazy(() => import('./components/admin/TabControlClimatico'));
 const TabRiego      = React.lazy(() => import('./components/admin/TabRiego'));
 const TabAnalisis   = React.lazy(() => import('./components/admin/TabAnalisis'));
 const TabFitosanitario = React.lazy(() => import('./components/admin/TabFitosanitario'));
@@ -97,14 +95,12 @@ function AdminLayout({ onLogout }) {
   const esSuperAdmin = adminRole === 'superadmin';
 
   const menuCompleto = [
-    { id: 'TabTelemetria', label: 'Telemetría en Vivo', icon: LayoutDashboard },
-    { id: 'TabHeladas',    label: 'Clima & Heladas',     icon: CloudSnow },
-    { id: 'TabZonda',      label: 'Viento Zonda',        icon: Wind },
-    { id: 'TabGranizo',    label: 'Alerta Granizo',      icon: CloudRain }, // ← IMPORTANTE: Agregado al menú
-    { id: 'TabRiego',      label: 'Riego Inteligente',   icon: Droplets },
-    { id: 'TabAnalisis',   label: 'Análisis Anual/Mes',  icon: BarChart3 },
-    { id: 'TabFitosanitario', label: 'Sanidad IA (Plagas)', icon: Bug },
-    { id: 'TabStaff',      label: 'Staff & Accesos',     icon: Users, soloSuperAdmin: true },
+    { id: 'TabTelemetria', label: 'Panel General',        icon: LayoutDashboard },
+    { id: 'TabControlClimatico', label: 'Control Climático', icon: CloudSun },
+    { id: 'TabRiego',      label: 'Riego Inteligente',    icon: Droplets },
+    { id: 'TabAnalisis',   label: 'Análisis Anual/Mes',   icon: BarChart3 },
+    { id: 'TabFitosanitario', label: 'Control de Plagas', icon: Bug },
+    { id: 'TabStaff',      label: 'Staff & Accesos',      icon: Users, soloSuperAdmin: true },
   ];
 
   // El demo público (y cualquier operador que no sea super admin) no ve
@@ -195,10 +191,8 @@ function AdminLayout({ onLogout }) {
         <main className="p-4 md:p-8 lg:p-10 flex-1 overflow-y-auto w-full">
           <div className="max-w-6xl mx-auto w-full">
             <Suspense fallback={<LoadingTab />}>
-              {activeTab === 'TabTelemetria' && <TabTelemetria />}
-              {activeTab === 'TabHeladas' && <TabHeladas />}
-              {activeTab === 'TabZonda' && <TabZonda />}
-              {activeTab === 'TabGranizo' && <TabGranizo />}
+              {activeTab === 'TabTelemetria' && <TabTelemetria onNavigate={setActiveTab} />}
+              {activeTab === 'TabControlClimatico' && <TabControlClimatico />}
               {activeTab === 'TabRiego' && <TabRiego />}
               {activeTab === 'TabAnalisis' && <TabAnalisis />}
               {activeTab === 'TabFitosanitario' && <TabFitosanitario />}

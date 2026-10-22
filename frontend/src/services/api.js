@@ -20,7 +20,7 @@ const apiService = {
   getHistorico:         async (id, periodo = 'mensual') => (await api.get(`/analisis/historico/${id}?periodo=${periodo}`)).data,
   getClima:             async (id) => (await api.get(`/clima/${id}`)).data,
   getAlertasSmn:        async () => (await api.get('/clima/alertas-smn')).data,
-  // Detector de Zonda local por sensores (lo usa TabZonda)
+  // Detector de Zonda local por sensores (lo usa Control Climático)
   getPrediccionZonda:   async (id) => (await api.get(`/analisis/zonda/${id}`)).data,
   getNasaData:          async (id) => (await api.get(`/nasa/${id}`)).data,
   getRiego:             async (id) => (await api.get(`/riego/${id}`)).data,
