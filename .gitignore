@@ -46,3 +46,6 @@ build/
 
 # === Logs ===
 *.log
+
+# === Caché de datos (se regenera solo) ===
+backend/data/nasa_cache.csv
