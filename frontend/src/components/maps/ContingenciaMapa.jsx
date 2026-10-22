@@ -2,13 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { nombreCuartel } from '../../utils/nombreCuartel';
-import { crearIconoNodoVivo } from '../../utils/nodoVivoIcon';
-import { crearIconoCategoria, COLOR_CATEGORIA } from '../../utils/climaIcons';
+import { crearIconoCategoria, COLOR_CATEGORIA, colorSeveridad } from '../../utils/climaIcons';
 import { obtenerFrameRadar, urlTileRadar } from '../../services/rainviewer';
 import { AlertTriangle, CheckCircle, Radar as RadarIcon } from 'lucide-react';
 
-const ICONO_NODO_VIVO = crearIconoNodoVivo(34);
 const CENTRO_MENDOZA = [-33.2, -68.95];
+
+// RainViewer solo genera tiles reales hasta este nivel de zoom — pedirle
+// más que eso devuelve una imagen de "Zoom Level Not Supported" en vez de
+// 404, y Leaflet la repite por todo el mapa. Con maxNativeZoom, Leaflet
+// sigue usando el último tile real disponible y lo agranda (se ve un poco
+// más borroso bien de cerca, pero nunca rompe).
+const RADAR_MAX_NATIVE_ZOOM = 9;
 
 const CARDINALES = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
 function aCardinal(deg) {
@@ -34,19 +39,25 @@ function AjustarVista({ cuarteles }) {
     );
     if (!puntos.length) return;
     const bounds = L.latLngBounds(puntos);
-    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 18 });
+    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 16 });
   }, [cuarteles, map]);
   return null;
 }
 
-// Desplaza un punto lat/lon una pequeña distancia (grados) en una dirección
-// arbitraria, solo para esparcir los íconos de "campo de viento" alrededor
-// del nodo — no representa mediciones distintas, es el mismo dato real
-// (una sola lectura de dirección) dibujado varias veces para que se lea
-// como "viento sobre la zona" y no como un solo marcador suelto.
+// Desplaza un punto lat/lon una pequeña distancia (grados), solo para
+// esparcir los íconos de "campo de viento" alrededor del nodo — es la
+// misma lectura real repetida varias veces para que se lea como "viento
+// sobre la zona" y no como un solo marcador suelto.
 function desplazar([lat, lon], dLat, dLon) {
   return [lat + dLat, lon + dLon];
 }
+
+const LEYENDA_SEVERIDAD = [
+  { label: 'Menor', color: '#eab308' },
+  { label: 'Moderado', color: '#f97316' },
+  { label: 'Severo', color: '#ef4444' },
+  { label: 'Extremo', color: '#a855f7' },
+];
 
 export default function ContingenciaMapa({
   categoria, cuarteles = [], alertas = [], activo = false, windDeg = null,
@@ -65,6 +76,7 @@ export default function ContingenciaMapa({
   const color = COLOR_CATEGORIA[categoria];
   const totalAfectadas = new Set(alertas.flatMap((a) => a.cuarteles_afectados || [])).size;
   const nodo = cuarteles.find((c) => c.lat && c.lon);
+  const hayAlgunaSeveridad = alertas.some((a) => a.severidad);
 
   return (
     <div className="space-y-3">
@@ -104,16 +116,21 @@ export default function ContingenciaMapa({
                   url={urlTileRadar(radarFrame)}
                   opacity={0.55}
                   zIndex={450}
+                  maxNativeZoom={RADAR_MAX_NATIVE_ZOOM}
+                  maxZoom={19}
                 />
               )}
               <AjustarVista cuarteles={cuarteles} />
 
-              {/* Polígonos de alerta del SMN, ya filtrados a esta categoría */}
+              {/* Polígonos de alerta del SMN (ya filtrados a esta categoría),
+                  coloreados por la severidad OFICIAL del SMN — la misma
+                  escala que usa su propia app/radar — no por categoría. */}
               {alertas.map((a, i) => (a.poligonos || []).map((poligono, j) => {
                 const afecta = (a.cuarteles_afectados || []).length > 0;
+                const colorSev = colorSeveridad(a.severidad);
                 return (
                   <Polygon key={`alerta-${i}-${j}`} positions={poligono}
-                    pathOptions={{ color, weight: afecta ? 3 : 1.5, fillColor: color, fillOpacity: afecta ? 0.25 : 0.08 }}>
+                    pathOptions={{ color: colorSev, weight: afecta ? 3 : 1.5, fillColor: colorSev, fillOpacity: afecta ? 0.3 : 0.1 }}>
                     <Popup>
                       <div style={{ fontSize: 12, color: '#18211b' }}>
                         <b>{a.evento}</b><br />
@@ -140,18 +157,21 @@ export default function ContingenciaMapa({
               )}
 
               {/* Campo de viento: la misma dirección real (NASA POWER) se
-                  repite en varios puntos alrededor del nodo para que se lea
-                  como "viento sobre la zona" en vez de un solo marcador. */}
+                  repite en 3 puntos alrededor del nodo para que se lea como
+                  "viento sobre la zona" — sin pisar el ícono del nodo. */}
               {categoria === 'ZONDA' && nodo && windDeg != null && (
                 <>
-                  {[[0.012, 0], [-0.012, 0.014], [0.01, -0.016], [-0.014, -0.012]].map(([dLat, dLon], i) => (
+                  {[[0.014, 0.01], [-0.014, 0.016], [0.004, -0.018]].map(([dLat, dLon], i) => (
                     <Marker key={`viento-${i}`} position={desplazar([nodo.lat, nodo.lon], dLat, dLon)}
                       icon={crearIconoCategoria('ZONDA', { size: 22, deg: windDeg })} interactive={false} />
                   ))}
                 </>
               )}
 
-              {/* Ícono de nodo + contingencia + geocercas reales */}
+              {/* Geocerca real + UN solo marcador por nodo: el ícono ya
+                  incluye el anillo "en vivo" + el símbolo de la
+                  contingencia, así no hay dos íconos pisándose en el mismo
+                  punto (el bug que reportaste). */}
               {cuarteles.map((c) => (
                 <React.Fragment key={c.vinedo_id}>
                   {c.geocerca && c.geocerca.length >= 3 && (
@@ -160,15 +180,13 @@ export default function ContingenciaMapa({
                       <Popup>{nombreCuartel(c.vinedo_id)}</Popup>
                     </Polygon>
                   )}
-                  <Marker position={[c.lat, c.lon]} icon={ICONO_NODO_VIVO}>
-                    <Popup>{nombreCuartel(c.vinedo_id)}</Popup>
-                  </Marker>
-                  <Marker position={[c.lat + 0.006, c.lon + 0.006]}
-                    icon={crearIconoCategoria(categoria, { size: 34, activo, deg: windDeg ?? 0 })}>
+                  <Marker position={[c.lat, c.lon]}
+                    icon={crearIconoCategoria(categoria, { size: 44, activo, deg: windDeg ?? 0 })}>
                     <Popup>
-                      {categoria === 'ZONDA'
-                        ? (windDeg != null ? `Viento desde ${Math.round(windDeg)}° (${aCardinal(windDeg)}) — NASA POWER` : 'Dirección de viento no disponible en este momento.')
-                        : `${categoria.charAt(0) + categoria.slice(1).toLowerCase()} · ${nombreCuartel(c.vinedo_id)}`}
+                      {nombreCuartel(c.vinedo_id)}
+                      {categoria === 'ZONDA' && (windDeg != null
+                        ? ` — viento desde ${Math.round(windDeg)}° (${aCardinal(windDeg)}), NASA POWER`
+                        : ' — dirección de viento no disponible en este momento')}
                     </Popup>
                   </Marker>
                 </React.Fragment>
@@ -176,10 +194,21 @@ export default function ContingenciaMapa({
             </MapContainer>
           </div>
 
-          <p className="text-[10px] text-[#5d6f5a] mt-2">
-            Polígono de color: zona con alerta vigente del SMN para esta contingencia (más intenso = tu cuartel está adentro). Verde: tu geocerca real.
-            {mostrarRadar && ' Capa de fondo: radar de precipitación en vivo (RainViewer).'}
-          </p>
+          <div className="flex items-center justify-between flex-wrap gap-2 mt-2">
+            <p className="text-[10px] text-[#5d6f5a]">
+              Verde: tu geocerca real.{mostrarRadar && ' Capa de fondo: radar de precipitación en vivo (RainViewer).'}
+            </p>
+            {hayAlgunaSeveridad && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {LEYENDA_SEVERIDAD.map((l) => (
+                  <span key={l.label} className="flex items-center gap-1 text-[9px] font-bold uppercase text-[#8a9787]">
+                    <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: l.color }} /> {l.label}
+                  </span>
+                ))}
+                <span className="text-[9px] text-[#5d6f5a]">· escala oficial SMN</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -192,20 +221,23 @@ export default function ContingenciaMapa({
         </div>
       ) : (
         <div className="space-y-2">
-          {alertas.map((a, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 rounded-xl border"
-              style={{ borderColor: color + '55', backgroundColor: color + '15' }}>
-              <AlertTriangle size={15} style={{ color }} className="mt-0.5 shrink-0" />
-              <div className="min-w-0 text-xs">
-                <p className="font-black uppercase" style={{ color }}>
-                  {a.evento} · {a.severidad || '—'}
-                  {a.cuarteles_afectados?.length > 0 && ` · afecta ${a.cuarteles_afectados.length} cuartel(es)`}
-                </p>
-                <p className="text-[#cdd8c8] mt-0.5">{a.descripcion}</p>
-                <p className="text-[#5d6f5a] mt-0.5">Vence: {formatearFecha(a.vence)}</p>
+          {alertas.map((a, i) => {
+            const colorSev = colorSeveridad(a.severidad);
+            return (
+              <div key={i} className="flex items-start gap-3 p-3 rounded-xl border"
+                style={{ borderColor: colorSev + '55', backgroundColor: colorSev + '15' }}>
+                <AlertTriangle size={15} style={{ color: colorSev }} className="mt-0.5 shrink-0" />
+                <div className="min-w-0 text-xs">
+                  <p className="font-black uppercase" style={{ color: colorSev }}>
+                    {a.evento} · {a.severidad || '—'}
+                    {a.cuarteles_afectados?.length > 0 && ` · afecta ${a.cuarteles_afectados.length} cuartel(es)`}
+                  </p>
+                  <p className="text-[#cdd8c8] mt-0.5">{a.descripcion}</p>
+                  <p className="text-[#5d6f5a] mt-0.5">Vence: {formatearFecha(a.vence)}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

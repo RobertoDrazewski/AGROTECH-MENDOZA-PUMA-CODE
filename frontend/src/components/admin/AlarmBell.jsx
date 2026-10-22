@@ -1,16 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, X, ShieldAlert, Wind, CloudRain, History, AlertTriangle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Bell, X, ShieldAlert, Wind, CloudRain, CloudDrizzle, History, AlertTriangle } from 'lucide-react';
 import apiService from '../../services/api';
 import { nombreCuartel } from '../../utils/nombreCuartel';
 
-const ICONOS = { HELADA: ShieldAlert, ZONDA: Wind, GRANIZO: CloudRain, ALERTA_SMN: AlertTriangle };
-// Misma paleta que el mapa de Control Climático (climaIcons.js): cyan =
-// helada, naranja = zonda, celeste = granizo — así el color significa lo
-// mismo en toda la app, desde la campanita hasta el mapa.
+// Mismas categorías y colores que el mapa de Control Climático
+// (climaIcons.js): cyan = helada, naranja = zonda, violeta = granizo,
+// azul = lluvia — así una alerta se ve igual acá y en su pestaña. El
+// backend ahora clasifica las alertas oficiales del SMN con la misma
+// categoría (antes todas caían en un "ALERTA_SMN" genérico sin relación
+// visual con ninguna pestaña, lo que hacía parecer que la campanita y el
+// panel mostraban cosas distintas).
+const ICONOS = { HELADA: ShieldAlert, ZONDA: Wind, GRANIZO: CloudRain, LLUVIA: CloudDrizzle, ALERTA_SMN: AlertTriangle };
 const COLORES = {
   HELADA:     { text: 'text-cyan-400',   bg: 'bg-cyan-500/10',   ring: 'border-cyan-500/30' },
   ZONDA:      { text: 'text-orange-400', bg: 'bg-orange-500/10', ring: 'border-orange-500/30' },
-  GRANIZO:    { text: 'text-sky-400',    bg: 'bg-sky-500/10',    ring: 'border-sky-500/30' },
+  GRANIZO:    { text: 'text-violet-400', bg: 'bg-violet-500/10', ring: 'border-violet-500/30' },
+  LLUVIA:     { text: 'text-blue-400',   bg: 'bg-blue-500/10',   ring: 'border-blue-500/30' },
   ALERTA_SMN: { text: 'text-purple-400', bg: 'bg-purple-500/10', ring: 'border-purple-500/30' },
 };
 
@@ -110,10 +116,18 @@ export default function AlarmBell() {
         )}
       </button>
 
-      {open && (
+      {/* Portal a document.body: el <header> de App.jsx tiene
+          backdrop-blur-md (backdrop-filter), y un backdrop-filter en un
+          ancestro crea un "containing block" nuevo para los hijos
+          position:fixed — por eso el overlay/panel quedaba atrapado
+          dentro del header en vez de cubrir toda la pantalla, y el mapa
+          (que sigue el flujo normal del documento, después del header)
+          terminaba pintándose encima. Montándolo directo en <body> se
+          evita el problema de raíz. */}
+      {open && createPortal(
         <>
-          <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed top-0 right-0 h-screen w-full max-w-sm bg-[#18211b] border-l border-[#2a3a2c]/60 z-50 flex flex-col shadow-2xl">
+          <div className="fixed inset-0 bg-black/60 z-[1000]" onClick={() => setOpen(false)} />
+          <div className="fixed top-0 right-0 h-screen w-full max-w-sm bg-[#18211b] border-l border-[#2a3a2c]/60 z-[1001] flex flex-col shadow-2xl">
             <div className="p-5 border-b border-[#2a3a2c]/60 flex items-center justify-between shrink-0">
               <h3 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2">
                 <Bell size={16} className="text-amber-400" /> Alarmas
@@ -184,7 +198,8 @@ export default function AlarmBell() {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   );

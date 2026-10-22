@@ -23,7 +23,7 @@ function TrampaFisicaCard({ trampa, onRefresh, onCapturar, capturando }) {
   return (
     <div className={`rounded-2xl border overflow-hidden bg-[#18211b] ${
       trampa.requiere_accion ? 'border-rose-500/40' : 'border-[#2a3a2c]/60'}`}>
-      <div className="relative bg-[#0d130f] aspect-video flex items-center justify-center">
+      <div className="relative bg-[#0d130f] aspect-[4/3] flex items-center justify-center">
         {!imgError ? (
           <img key={imgUrl} src={imgUrl} alt={`Trampa ${trampa.trap_id}`}
             onError={() => setImgError(true)}
@@ -184,71 +184,66 @@ export default function TabFitosanitario() {
         </div>
       </div>
 
-      {/* ====== TRAMPAS FÍSICAS + MODELO DE VISIÓN ======
-          Antes iban en secciones separadas (grid de 3 columnas para las
-          trampas, panel aparte abajo): con 1 o 2 trampas eso dejaba
-          columnas enteras vacías al lado de la cámara. Ahora comparten una
-          sola fila: las trampas no se estiran (ancho fijo, en flex-wrap) y
-          el panel del modelo ocupa el espacio que sobra al costado en vez
-          de quedar como un bloque aparte más abajo. */}
-      {(trampas.length > 0 || modelo) && (
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-5 items-start">
-          {trampas.length > 0 && (
-            <div className={modelo ? 'xl:col-span-3' : 'xl:col-span-5'}>
-              <div className="flex items-center gap-2 mb-3">
-                <Camera className="text-[#9bcc44]" size={16} />
-                <h3 className="text-xs font-black uppercase tracking-widest text-white">
-                  Trampas físicas en campo · {trampas.length} {trampas.length === 1 ? 'nodo' : 'nodos'}
-                </h3>
-                <button onClick={cargarTrampas}
-                  className="ml-auto text-[10px] font-bold uppercase text-[#9bcc44] flex items-center gap-1 hover:text-white transition-colors">
-                  <RefreshCw size={11} /> Refrescar red
-                </button>
+      {/* ====== TRAMPAS FÍSICAS EN CAMPO ======
+          Antes era un grid de 3 columnas: con 1-2 trampas quedaban
+          columnas enteras vacías. El intento de ponerlas al lado del panel
+          del modelo tampoco quedó bien (asimetría de tamaños). Ahora: las
+          tarjetas van en ancho fijo GRANDE (no se estiran ni quedan
+          chicas) y la cámara ocupa más alto (4:3 en vez de 16:9) para que
+          sea el elemento protagonista. */}
+      {trampas.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Camera className="text-[#9bcc44]" size={16} />
+            <h3 className="text-xs font-black uppercase tracking-widest text-white">
+              Trampas físicas en campo · {trampas.length} {trampas.length === 1 ? 'nodo' : 'nodos'}
+            </h3>
+            <button onClick={cargarTrampas}
+              className="ml-auto text-[10px] font-bold uppercase text-[#9bcc44] flex items-center gap-1 hover:text-white transition-colors">
+              <RefreshCw size={11} /> Refrescar red
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-5">
+            {trampas.map((t) => (
+              <div key={t.trap_id} className="w-full sm:w-[440px]">
+                <TrampaFisicaCard trampa={t} onRefresh={refrescarUna}
+                  onCapturar={capturarAhora} capturando={capturandoId === t.trap_id} />
               </div>
-              <div className="flex flex-wrap gap-5">
-                {trampas.map((t) => (
-                  <div key={t.trap_id} className="w-full sm:w-[320px]">
-                    <TrampaFisicaCard trampa={t} onRefresh={refrescarUna}
-                      onCapturar={capturarAhora} capturando={capturandoId === t.trap_id} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            ))}
+          </div>
+        </div>
+      )}
 
-          {/* Estado del modelo IA */}
-          {modelo && (
-            <div className={trampas.length > 0 ? 'xl:col-span-2' : 'xl:col-span-5'}>
-              <div className="bg-gradient-to-br from-[#9bcc44]/10 to-[#18211b] border border-[#9bcc44]/20 rounded-2xl p-6 h-full">
-                <div className="flex items-center gap-2 mb-4 flex-wrap">
-                  <Cpu className="text-[#9bcc44]" size={20} />
-                  <h3 className="text-xs font-black uppercase tracking-widest text-white">Modelo de visión · {modelo.arquitectura}</h3>
-                  <span className="text-[10px] font-bold uppercase text-[#9bcc44] bg-[#9bcc44]/10 border border-[#9bcc44]/25 px-3 py-1 rounded-full">{modelo.fase}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { l: 'Precisión actual', v: `${Math.round(modelo.precision_actual * 100)}%` },
-                    { l: 'Objetivo', v: `${Math.round(modelo.precision_objetivo * 100)}%` },
-                    { l: 'Imágenes etiquetadas', v: modelo.imagenes_etiquetadas.toLocaleString() },
-                    { l: 'Meta de imágenes', v: modelo.imagenes_objetivo.toLocaleString() },
-                  ].map((x, i) => (
-                    <div key={i} className="bg-[#121a14]/60 rounded-xl p-3">
-                      <p className="text-[10px] uppercase text-[#5d6f5a] font-bold">{x.l}</p>
-                      <p className="text-lg font-black text-white mt-1">{x.v}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="w-full bg-[#2a3a2c] h-2 rounded-full overflow-hidden mt-4">
-                  <div className="bg-[#9bcc44] h-full transition-all duration-1000"
-                    style={{ width: `${(modelo.imagenes_etiquetadas / modelo.imagenes_objetivo) * 100}%` }} />
-                </div>
-                <p className="text-[10px] text-[#5d6f5a] mt-4 leading-relaxed">
-                  Entrenamiento supervisado en campo: cada captura de las trampas de la izquierda suma a la meta de
-                  imágenes etiquetadas. A más imágenes, más precisión del conteo automático.
-                </p>
+      {/* Estado del modelo IA — franja horizontal a todo el ancho, no al
+          costado de las trampas (eso generaba asimetría de tamaños). */}
+      {modelo && (
+        <div className="bg-gradient-to-br from-[#9bcc44]/10 to-[#18211b] border border-[#9bcc44]/20 rounded-2xl p-6">
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <Cpu className="text-[#9bcc44]" size={20} />
+            <h3 className="text-xs font-black uppercase tracking-widest text-white">Modelo de visión · {modelo.arquitectura}</h3>
+            <span className="ml-auto text-[10px] font-bold uppercase text-[#9bcc44] bg-[#9bcc44]/10 border border-[#9bcc44]/25 px-3 py-1 rounded-full">{modelo.fase}</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { l: 'Precisión actual', v: `${Math.round(modelo.precision_actual * 100)}%` },
+              { l: 'Objetivo', v: `${Math.round(modelo.precision_objetivo * 100)}%` },
+              { l: 'Imágenes etiquetadas', v: modelo.imagenes_etiquetadas.toLocaleString() },
+              { l: 'Meta de imágenes', v: modelo.imagenes_objetivo.toLocaleString() },
+            ].map((x, i) => (
+              <div key={i} className="bg-[#121a14]/60 rounded-xl p-3">
+                <p className="text-[10px] uppercase text-[#5d6f5a] font-bold">{x.l}</p>
+                <p className="text-lg font-black text-white mt-1">{x.v}</p>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
+          <div className="w-full bg-[#2a3a2c] h-2 rounded-full overflow-hidden mt-4">
+            <div className="bg-[#9bcc44] h-full transition-all duration-1000"
+              style={{ width: `${(modelo.imagenes_etiquetadas / modelo.imagenes_objetivo) * 100}%` }} />
+          </div>
+          <p className="text-[10px] text-[#5d6f5a] mt-4 leading-relaxed">
+            Entrenamiento supervisado en campo: cada captura de las trampas de arriba suma a la meta de imágenes
+            etiquetadas. A más imágenes, más precisión del conteo automático.
+          </p>
         </div>
       )}
 

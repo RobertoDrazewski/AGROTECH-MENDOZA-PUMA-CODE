@@ -78,7 +78,12 @@ export default function TabControlClimatico() {
         setAlertasSmn(Array.isArray(al?.alertas) ? al.alertas : []);
       }).catch(() => {});
     cargar();
-    const iv = setInterval(cargar, 10 * 60 * 1000); // igual al caché del backend
+    // El backend ya cachea 10 min (no pega más seguido al SMN aunque le
+    // preguntemos más seguido). Antes el front sondeaba cada 10 min, muy
+    // por detrás de los 20s de la campanita — eso generaba el caso de
+    // "la campana muestra una alerta que acá todavía no aparece". 60s es
+    // un buen equilibrio sin generar tráfico extra real.
+    const iv = setInterval(cargar, 60 * 1000);
     return () => clearInterval(iv);
   }, []);
 

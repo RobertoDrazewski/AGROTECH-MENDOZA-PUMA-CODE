@@ -135,8 +135,16 @@ def escanear_alarmas():
                 continue
             nivel = "CRITICAL" if severidad in ("severe", "extreme") else "MEDIUM"
             msg = f"{alerta.get('evento') or 'Alerta SMN'}: {(alerta.get('descripcion') or '')[:180]}"
-            _guardar(vinedo_id, "ALERTA_SMN", nivel, msg)
-            activas.append({"vinedo_id": vinedo_id, "tipo": "ALERTA_SMN",
+            # Usamos la categoría que ya clasificó smn_alertas.py
+            # (HELADA/ZONDA/GRANIZO/LLUVIA) en vez de un "ALERTA_SMN"
+            # genérico — así la campanita muestra el mismo tipo/color que
+            # la pestaña de Control Climático correspondiente, y no hay
+            # dos etiquetas distintas para la misma alerta.
+            tipo = alerta.get("categoria") or "ALERTA_SMN"
+            if tipo == "OTRO":
+                tipo = "ALERTA_SMN"
+            _guardar(vinedo_id, tipo, nivel, msg)
+            activas.append({"vinedo_id": vinedo_id, "tipo": tipo,
                             "nivel": nivel, "mensaje": msg})
     except Exception as e:
         print(f"--> [ALARMAS] No se pudo chequear alertas del SMN: {e}")
