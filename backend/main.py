@@ -184,6 +184,25 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"--> [HW] No se pudo pre-registrar el nodo de patio: {e}")
 
+    # 1c. Geocerca por defecto del Nodo DEMO: el límite político real del
+    # departamento de Maipú, Mendoza (IGN/CONAE), en vez del cuadradito
+    # aproximado que se dibuja alrededor del punto GPS cuando no hay
+    # geocerca marcada. Se siembra UNA sola vez — si ya hay una geocerca
+    # restaurada desde MySQL (por ejemplo porque la marcaste a mano con
+    # "Marcar geocerca" en el panel), esa queda y no se pisa.
+    try:
+        ya_tiene_geocerca = bool(db_vinedos.get_meta("Patio_Casa").get("geocerca"))
+        if not ya_tiene_geocerca:
+            from app.data.geocerca_maipu import GEOCERCA_MAIPU_DEPARTAMENTO
+            db_vinedos.set_geocerca("Patio_Casa", GEOCERCA_MAIPU_DEPARTAMENTO)
+            if bool(settings.DATABASE_URL):
+                from app.db.database import guardar_geocerca_db
+                guardar_geocerca_db("Patio_Casa", GEOCERCA_MAIPU_DEPARTAMENTO)
+            print(f"--> [GEOCERCA] Límite de Maipú cargado como geocerca por defecto "
+                  f"de Patio_Casa ({len(GEOCERCA_MAIPU_DEPARTAMENTO)} vértices).")
+    except Exception as e:
+        print(f"--> [GEOCERCA] No se pudo sembrar el límite de Maipú: {e}")
+
     # 2. Sembrar NASA + arrancar simulador EN SEGUNDO PLANO
     threading.Thread(target=sembrar_nasa_en_segundo_plano, daemon=True).start()
     print("--> [NASA] Siembra iniciada en segundo plano. El servidor ya está listo.")

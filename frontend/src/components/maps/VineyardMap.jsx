@@ -46,11 +46,18 @@ function AjustarVista({ cuarteles }) {
   const map = useMap();
   useEffect(() => {
     if (!cuarteles.length) return;
-    const bounds = L.latLngBounds(cuarteles.map((c) => [c.lat, c.lon]));
-    // Con el mapa más grande (a todo el ancho) hay más píxeles disponibles
-    // para el mismo territorio, así que fitBounds ya elige más zoom solo.
-    // maxZoom alto (18) para que, con un solo nodo, se vea bien de cerca el
-    // ícono — no un puntito perdido en medio del paisaje.
+    // Encuadra según la geocerca real (si ya está marcada) en vez de solo
+    // el punto GPS: así, si la geocerca es un polígono grande (ej. todo el
+    // departamento de Maipú), el mapa se abre mostrándolo completo; y si es
+    // chica (el cuadradito aproximado de un nodo sin geocerca marcada),
+    // maxZoom igual se encarga de acercar lo suficiente para ver el ícono.
+    const puntos = cuarteles.flatMap((c) =>
+      c.geocerca && c.geocerca.length >= 3
+        ? c.geocerca.map((p) => [p.lat ?? p[0], p.lon ?? p[1]])
+        : [[c.lat, c.lon]]
+    );
+    if (!puntos.length) return;
+    const bounds = L.latLngBounds(puntos);
     map.fitBounds(bounds, { padding: [24, 24], maxZoom: 18 });
   }, [cuarteles, map]);
   return null;
