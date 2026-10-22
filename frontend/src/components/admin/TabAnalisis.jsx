@@ -137,9 +137,10 @@ export default function TabAnalisis() {
         </div>
       </div>
 
-      {/* Carga manual de Brix: herramienta independiente dentro de Análisis
-          (antes vivía perdida al final de Telemetría en Vivo). Siempre
-          visible, no depende de que haya histórico cargado todavía. */}
+      {/* Carga manual de Brix: ahora es una barra angosta plegada por
+          defecto (el formulario completo ocupaba demasiado alto y
+          empujaba los KPI/gráficos fuera de la vista sin scroll). Se
+          expande con un clic; no depende de que haya histórico cargado. */}
       <BrixManualForm />
 
       {loading ? (

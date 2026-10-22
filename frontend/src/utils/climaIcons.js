@@ -13,6 +13,11 @@ export const COLOR_CATEGORIA = {
   LLUVIA: '#3b82f6',   // azul
 };
 
+// Color fijo del "punto vivo" del nodo — el mismo verde de marca que usa
+// nodoVivoIcon.js en el resto del panel, así se lee igual en todos lados:
+// "este punto exacto es donde está tu hardware".
+const COLOR_NODO = '#9bcc44';
+
 let estiloInyectado = false;
 function asegurarEstilo() {
   if (estiloInyectado || typeof document === 'undefined') return;
@@ -41,29 +46,47 @@ function anillos(color, activo, size) {
   return vivo + alerta;
 }
 
-// Copo de hielo: 3 ejes de 6 puntas con ramificaciones chicas — mucho más
-// reconocible como "hielo/escarcha" a simple vista que una cruz lisa.
+// El punto exacto del nodo: se dibuja SIEMPRE AL FINAL (encima de todo lo
+// demás del ícono) para que nunca quede tapado por el símbolo de la
+// contingencia (nube, copo, flecha) — antes el relleno sólido de la nube
+// de Granizo/Lluvia pasaba justo por el centro y "se comía" el punto del
+// nodo. Con un anillo claro de contraste se ve nítido sobre cualquier
+// fondo, color o imagen satelital.
+function puntoNodo(size) {
+  const c = size / 2;
+  const r = Math.max(2.6, size * 0.065);
+  return `<circle cx="${c}" cy="${c}" r="${r + 1.3}" fill="#0b1210" />
+    <circle cx="${c}" cy="${c}" r="${r + 1.3}" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.9" />
+    <circle cx="${c}" cy="${c}" r="${r}" fill="${COLOR_NODO}" />`;
+}
+
+// Copo de hielo: diseño simplificado a propósito — 3 ejes (6 puntas) bien
+// gruesos con una pequeña punta en diamante en cada extremo, SIN las
+// ramificaciones finas de la versión anterior (a tamaño de ícono de mapa
+// se veían como una mancha confusa, no como hielo). Menos líneas, más
+// gruesas y contrastadas = más reconocible de un vistazo.
 export function crearIconoHelada(size = 42, activo = false) {
   const c = size / 2;
   const color = COLOR_CATEGORIA.HELADA;
-  const R = size * 0.34;
+  const R = size * 0.36;
   let ejes = '';
   for (let i = 0; i < 6; i++) {
     const ang = (i * 60 * Math.PI) / 180;
     const x2 = c + R * Math.cos(ang), y2 = c + R * Math.sin(ang);
-    const xm = c + R * 0.55 * Math.cos(ang), ym = c + R * 0.55 * Math.sin(ang);
+    // Puntita en diamante en la punta de cada eje (da la textura de
+    // "cristal" sin agregar líneas extra que ensucien el ícono).
     const perp = ang + Math.PI / 2;
-    const bx1 = xm + R * 0.18 * Math.cos(perp), by1 = ym + R * 0.18 * Math.sin(perp);
-    const bx2 = xm - R * 0.18 * Math.cos(perp), by2 = ym - R * 0.18 * Math.sin(perp);
-    ejes += `<line x1="${c}" y1="${c}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="2.2" stroke-linecap="round" />
-      <line x1="${xm}" y1="${ym}" x2="${bx1}" y2="${by1}" stroke="${color}" stroke-width="1.8" stroke-linecap="round" />
-      <line x1="${xm}" y1="${ym}" x2="${bx2}" y2="${by2}" stroke="${color}" stroke-width="1.8" stroke-linecap="round" />`;
+    const dR = R * 0.12;
+    const dx1 = x2 - R * 0.16 * Math.cos(ang) + dR * Math.cos(perp), dy1 = y2 - R * 0.16 * Math.sin(ang) + dR * Math.sin(perp);
+    const dx2 = x2 - R * 0.16 * Math.cos(ang) - dR * Math.cos(perp), dy2 = y2 - R * 0.16 * Math.sin(ang) - dR * Math.sin(perp);
+    ejes += `<line x1="${c}" y1="${c}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="2.8" stroke-linecap="round" />
+      <path d="M ${x2} ${y2} L ${dx1} ${dy1} L ${dx2} ${dy2} Z" fill="${color}" />`;
   }
   const html = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="overflow:visible">
     ${anillos(color, activo, size)}
     <circle cx="${c}" cy="${c}" r="${size * 0.46}" fill="#0b1210" stroke="${color}" stroke-width="2" />
     ${ejes}
-    <circle cx="${c}" cy="${c}" r="2.4" fill="${color}" />
+    ${puntoNodo(size)}
   </svg>`;
   return divIcon(html, size);
 }
@@ -79,6 +102,7 @@ export function crearIconoViento(size = 38, deg = 0, activo = false) {
             fill="${color}" />
       <line x1="${c}" y1="${c + size * 0.02}" x2="${c}" y2="${c + size * 0.24}" stroke="${color}" stroke-width="2" stroke-linecap="round" />
     </g>
+    ${puntoNodo(size)}
   </svg>`;
   return divIcon(html, size);
 }
@@ -101,6 +125,7 @@ export function crearIconoGranizo(size = 42, activo = false) {
     <path d="M ${c - 2} ${c + 7} l -3.4 5.6 h3.2 l -2.4 4.6" stroke="#fde047" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
     <circle cx="${c - 7}" cy="${c + 13}" r="1.7" fill="${color}" />
     <circle cx="${c + 7}" cy="${c + 12}" r="1.7" fill="${color}" />
+    ${puntoNodo(size)}
   </svg>`;
   return divIcon(html, size);
 }
@@ -122,6 +147,7 @@ export function crearIconoLluvia(size = 42, activo = false) {
     <line x1="${c - 7}" y1="${c + 7}" x2="${c - 9.5}" y2="${c + 14}" stroke="${color}" stroke-width="2" stroke-linecap="round" />
     <line x1="${c}" y1="${c + 8}" x2="${c - 2.5}" y2="${c + 15}" stroke="${color}" stroke-width="2" stroke-linecap="round" />
     <line x1="${c + 7}" y1="${c + 7}" x2="${c + 4.5}" y2="${c + 14}" stroke="${color}" stroke-width="2" stroke-linecap="round" />
+    ${puntoNodo(size)}
   </svg>`;
   return divIcon(html, size);
 }
@@ -132,6 +158,28 @@ export function crearIconoCategoria(categoria, opts = {}) {
   const f = FABRICAS[categoria] || crearIconoGranizo;
   if (categoria === 'ZONDA') return f(opts.size, opts.deg ?? 0, opts.activo);
   return f(opts.size, opts.activo);
+}
+
+// Marcador simple del nodo: un beacon chico (como nodoVivoIcon.js) teñido
+// con el color de la categoría, SIN dibujar un pictograma de nube/copo —
+// Roberto pidió explícitamente mostrar la imagen REAL del radar sobre el
+// mapa en vez de íconos inventados para representar la tormenta. Este
+// marcador solo dice "acá está tu nodo", el clima lo muestra el radar de
+// verdad (CapaRadar) y los polígonos oficiales del SMN.
+export function crearIconoNodo(categoria, { size = 30, activo = false, deg = null } = {}) {
+  const c = size / 2;
+  const color = COLOR_CATEGORIA[categoria] || COLOR_NODO;
+  const flecha = (categoria === 'ZONDA' && deg != null)
+    ? `<g transform="rotate(${deg} ${c} ${c})">
+         <path d="M ${c} ${c - size * 0.62} L ${c - size * 0.11} ${c - size * 0.38} L ${c + size * 0.11} ${c - size * 0.38} Z" fill="${color}" />
+       </g>`
+    : '';
+  const html = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="overflow:visible">
+    ${anillos(color, activo, size)}
+    ${flecha}
+    ${puntoNodo(size)}
+  </svg>`;
+  return divIcon(html, size);
 }
 
 // Escala oficial de severidad del SMN (CAP: minor/moderate/severe/extreme),
@@ -145,4 +193,13 @@ export const COLOR_SEVERIDAD = {
 };
 export function colorSeveridad(severidad) {
   return COLOR_SEVERIDAD[(severidad || '').toLowerCase()] || '#94a3b8';
+}
+
+// Nombre en español de cada nivel, al estilo "aviso amarillo/naranja/rojo"
+// que usan el SMN y los servicios meteorológicos en general (AccuWeather
+// incluido) — mucho más claro de un vistazo que mostrar la palabra en
+// inglés de la severidad CAP cruda.
+const NOMBRE_SEVERIDAD = { extreme: 'púrpura', severe: 'rojo', moderate: 'naranja', minor: 'amarillo' };
+export function nombreSeveridad(severidad) {
+  return NOMBRE_SEVERIDAD[(severidad || '').toLowerCase()] || 'vigente';
 }

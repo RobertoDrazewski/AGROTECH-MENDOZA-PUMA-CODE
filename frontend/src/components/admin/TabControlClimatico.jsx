@@ -48,6 +48,8 @@ export default function TabControlClimatico() {
   // las 4 secciones (antes cada una traía esto por su cuenta).
   const [cuarteles, setCuarteles] = useState([]);
   const [alertasSmn, setAlertasSmn] = useState([]);
+  const [smnOk, setSmnOk] = useState(true);
+  const [smnMensaje, setSmnMensaje] = useState('');
 
   useEffect(() => {
     apiService.getVinedos().then(v => {
@@ -76,7 +78,9 @@ export default function TabControlClimatico() {
       .then(([cu, al]) => {
         setCuarteles(Array.isArray(cu) ? cu.filter((c) => c.lat && c.lon) : []);
         setAlertasSmn(Array.isArray(al?.alertas) ? al.alertas : []);
-      }).catch(() => {});
+        setSmnOk(al?.smn_ok !== false);
+        setSmnMensaje(al?.smn_mensaje || '');
+      }).catch(() => { setSmnOk(false); setSmnMensaje('No se pudo contactar al backend.'); });
     cargar();
     // El backend ya cachea 10 min (no pega más seguido al SMN aunque le
     // preguntemos más seguido). Antes el front sondeaba cada 10 min, muy
@@ -153,7 +157,7 @@ export default function TabControlClimatico() {
                     <>
                       <ContingenciaMapa categoria={h.id} cuarteles={cuarteles} alertas={alertasDe(h.id)}
                         activo={activo} windDeg={h.id === 'ZONDA' ? windDeg : null}
-                        radarPorDefecto={h.id === 'GRANIZO' || h.id === 'LLUVIA'} />
+                        smnOk={smnOk} smnMensaje={smnMensaje} />
                       {h.id === 'HELADA' && <ContenidoHeladas helada={helada} nasa={nasa} clima={clima} />}
                       {h.id === 'ZONDA' && <ContenidoZonda zonda={zonda} windDeg={windDeg} />}
                       {h.id === 'GRANIZO' && <ContenidoConvectivo tipo="GRANIZO" eventos={eventosGranizo} fuente={clima?.fuente} />}
@@ -412,9 +416,9 @@ function ContenidoConvectivo({ tipo, eventos, fuente }) {
       )}
 
       <p className="text-[11px] text-[#5d6f5a] bg-[#18211b] border border-[#2a3a2c]/40 rounded-xl p-4 mt-4">
-        El radar y las alertas oficiales del SMN (mapa de arriba) son la fuente de verdad para decisiones de defensa.
-        El pronóstico convectivo propio (abajo) estima la probabilidad con humedad, temperatura y lluvia — es un
-        complemento, no lo reemplaza.
+        El mapa con el radar y las alertas oficiales del SMN es la fuente de verdad para decisiones de defensa. Esta
+        tabla de abajo es un pronóstico propio (humedad, temperatura y lluvia proyectadas) — un complemento, no lo
+        reemplaza.
       </p>
     </div>
   );

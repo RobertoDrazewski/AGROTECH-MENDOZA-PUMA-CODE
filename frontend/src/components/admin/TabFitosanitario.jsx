@@ -185,12 +185,15 @@ export default function TabFitosanitario() {
       </div>
 
       {/* ====== TRAMPAS FÍSICAS EN CAMPO ======
-          Antes era un grid de 3 columnas: con 1-2 trampas quedaban
-          columnas enteras vacías. El intento de ponerlas al lado del panel
-          del modelo tampoco quedó bien (asimetría de tamaños). Ahora: las
-          tarjetas van en ancho fijo GRANDE (no se estiran ni quedan
-          chicas) y la cámara ocupa más alto (4:3 en vez de 16:9) para que
-          sea el elemento protagonista. */}
+          Antes: ancho fijo (440px) en un flex-wrap. Con 1 sola trampa eso
+          dejaba un hueco enorme vacío a la derecha del contenedor — el
+          problema volvía a aparecer en cada ronda porque un ancho fijo
+          nunca se adapta al espacio real disponible. Grid con "auto-fit +
+          minmax" sí: cuando hay pocas trampas, las columnas vacías
+          directamente no existen y las tarjetas que SÍ hay se estiran para
+          ocupar todo el ancho (la cámara queda bien grande, que es lo que
+          también había pedido); cuando hay varias, se acomodan solas sin
+          dejar huecos. */}
       {trampas.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
@@ -203,12 +206,10 @@ export default function TabFitosanitario() {
               <RefreshCw size={11} /> Refrescar red
             </button>
           </div>
-          <div className="flex flex-wrap gap-5">
+          <div className="grid gap-5 grid-cols-[repeat(auto-fit,minmax(340px,1fr))]">
             {trampas.map((t) => (
-              <div key={t.trap_id} className="w-full sm:w-[440px]">
-                <TrampaFisicaCard trampa={t} onRefresh={refrescarUna}
-                  onCapturar={capturarAhora} capturando={capturandoId === t.trap_id} />
-              </div>
+              <TrampaFisicaCard key={t.trap_id} trampa={t} onRefresh={refrescarUna}
+                onCapturar={capturarAhora} capturando={capturandoId === t.trap_id} />
             ))}
           </div>
         </div>

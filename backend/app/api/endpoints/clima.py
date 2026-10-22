@@ -105,4 +105,12 @@ def alertas_smn():
         clave = (a["evento"], a["inicio"], a["vence"])
         salida.append({**a, "cuarteles_afectados": sorted(afectados_por_alerta.get(clave, []))})
 
-    return {"alertas": salida, "total": len(salida)}
+    # Estado real de la última consulta al SMN: así el front puede avisar
+    # "no se pudo leer el SMN ahora" en vez de mostrar una caja de "no hay
+    # alertas" indistinguible de cuando realmente no hay ninguna.
+    estado = smn_alertas.estado_feed()
+    return {
+        "alertas": salida, "total": len(salida),
+        "smn_ok": estado.get("ok", True),
+        "smn_mensaje": estado.get("mensaje") or "",
+    }

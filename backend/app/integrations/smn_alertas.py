@@ -12,6 +12,7 @@ import re
 import time
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urljoin
 import requests
 
 FEED_URL = "https://ssl.smn.gob.ar/CAP/AR.php"
@@ -21,6 +22,14 @@ CAP_NS = {"cap": "urn:oasis:names:tc:emergency:cap:1.2"}
 # los fines prácticos de una alerta de tormenta/granizo.
 _CACHE_TTL_SEG = 600
 _cache = {"alertas": [], "actualizado_en": 0.0}
+
+# Diagnóstico de la última consulta al feed del SMN: antes, si el feed
+# fallaba (SSL, timeout, cambio de formato) o devolvía links relativos que
+# requests no podía resolver, todo terminaba en una lista vacía SIN
+# ninguna señal visible — se veía exactamente igual que "hoy no hay
+# alertas". Esto separa ambos casos para poder diagnosticarlo sin mirar
+# los logs de Railway.
+_estado = {"ok": True, "mensaje": "", "alertas_crudas": 0, "alertas_validas": 0}
 
 
 # Clasificamos cada alerta del SMN en una de nuestras 4 categorías de
@@ -137,7 +146,16 @@ def _extraer_links_del_indice(texto: str) -> list:
         links = re.findall(r'href="([^"]+\.xml)"', texto)
         links = list(dict.fromkeys(l.strip() for l in links if l.strip()))  # dedup, conserva orden
 
-    return links
+    # BUG encontrado en esta ronda: cuando el índice llega como página HTML
+    # (en vez de RSS), sus "href" suelen ser rutas RELATIVAS (p. ej.
+    # "CAP/AR_12345.xml" en vez de "https://ssl.smn.gob.ar/CAP/AR_12345.xml").
+    # requests.get() con una ruta relativa tira "Invalid URL" — eso se
+    # capturaba en silencio en _bajar_y_parsear() y la lista de alertas
+    # quedaba SIEMPRE vacía sin ningún aviso, lo cual se ve exactamente
+    # igual que "hoy no hay alertas vigentes". urljoin con la propia
+    # FEED_URL como base resuelve tanto rutas relativas como absolutas sin
+    # romper ninguna de las dos.
+    return [urljoin(FEED_URL, l) for l in links]
 
 
 def _bajar_alertas_vigentes() -> list:
@@ -146,12 +164,18 @@ def _bajar_alertas_vigentes() -> list:
         resp.raise_for_status()
         links = _extraer_links_del_indice(resp.text)
     except Exception as e:
+        _estado["ok"] = False
+        _estado["mensaje"] = f"No se pudo conectar con el feed del SMN: {e}"
         print(f"--> [SMN] No se pudo bajar el feed de alertas: {e}")
         return []
 
     if not links:
-        print("--> [SMN] El índice de alertas respondió pero no se encontró ningún link a CAP XML.")
+        _estado["ok"] = False
+        _estado["mensaje"] = "El índice del SMN respondió pero no se encontró ningún link a CAP XML (puede haber cambiado de formato)."
+        print(f"--> [SMN] {_estado['mensaje']}")
         return []
+
+    errores = []
 
     def _bajar_y_parsear(link):
         try:
@@ -159,6 +183,7 @@ def _bajar_alertas_vigentes() -> list:
             r.raise_for_status()
             return _parsear_cap_xml(r.text)
         except Exception as e:
+            errores.append(str(e))
             print(f"--> [SMN] No se pudo bajar/parsear {link}: {e}")
             return None
 
@@ -172,6 +197,17 @@ def _bajar_alertas_vigentes() -> list:
             alerta = fut.result()
             if alerta:
                 alertas.append(alerta)
+
+    _estado["alertas_crudas"] = len(links)
+    _estado["alertas_validas"] = len(alertas)
+    if alertas or not errores:
+        _estado["ok"] = True
+        _estado["mensaje"] = ""
+    elif len(errores) == len(links):
+        # Bajamos N links y los N fallaron: el feed está vivo pero algo
+        # (SSL, red, formato) rompe la descarga individual de cada XML.
+        _estado["ok"] = False
+        _estado["mensaje"] = f"El SMN respondió {len(links)} alerta(s) vigente(s) pero no se pudo descargar/parsear ninguna ({errores[0]})."
     return alertas
 
 
@@ -185,6 +221,14 @@ def alertas_vigentes(forzar: bool = False) -> list:
     _cache["alertas"] = alertas
     _cache["actualizado_en"] = ahora
     return alertas
+
+
+def estado_feed() -> dict:
+    """Diagnóstico de la última consulta real al feed del SMN (no depende
+    de la caché): permite distinguir en el front "no hay alertas de esta
+    categoría ahora" de "no se pudo leer el feed del SMN", dos cajas vacías
+    que antes se veían idénticas."""
+    return dict(_estado)
 
 
 def _puntos_de_cuartel(cuartel: dict):

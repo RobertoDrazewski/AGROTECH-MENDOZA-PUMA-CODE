@@ -23,11 +23,12 @@ export async function obtenerFrameRadar() {
       const json = await res.json();
       const past = json?.radar?.past || [];
       const nowcast = json?.radar?.nowcast || [];
-      // Último frame real (no el nowcast, que es proyección) para "ahora";
-      // dejamos armada la lista completa por si más adelante se anima.
-      const ultimo = past[past.length - 1];
-      const resultado = ultimo
-        ? { host: json.host, path: ultimo.path, time: ultimo.time, frames: [...past, ...nowcast] }
+      const frames = [...past, ...nowcast];
+      // nowIndex: el último frame REAL (no el nowcast, que es proyección) —
+      // es el índice que arranca marcado como "Ahora" en el reproductor,
+      // igual que hace AccuWeather con su slider de tiempo.
+      const resultado = frames.length
+        ? { host: json.host, frames, nowIndex: Math.max(0, past.length - 1) }
         : null;
       cache = { data: resultado, ts: Date.now(), promesa: null };
       return resultado;
