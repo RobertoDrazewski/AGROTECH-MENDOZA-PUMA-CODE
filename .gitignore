@@ -1,0 +1,48 @@
+# === macOS ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# === Secretos / entorno (NUNCA commitear) ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# === Python / FastAPI (backend) ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+*.sqlite3
+.pytest_cache/
+
+# === Node / Vite / React (frontend) ===
+node_modules/
+dist/
+build/
+.vite/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Arduino / ESP32 (hardware) ===
+*.hex
+*.bin
+build/
+.pio/
+.vscode/
+
+# === Editores / IDEs ===
+.idea/
+*.swp
+
+# === Logs ===
+*.log
