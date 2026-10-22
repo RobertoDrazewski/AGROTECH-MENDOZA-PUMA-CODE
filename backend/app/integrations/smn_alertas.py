@@ -8,8 +8,10 @@ poll de la campanita), 3) parseamos evento/severidad/polígono, 4) cruzamos
 el polígono contra las geocercas (o el punto lat/lon) de cada cuartel con
 un point-in-polygon casero, sin depender de librerías geoespaciales pesadas
 (shapely, etc.) que no están en requirements.txt."""
+import re
 import time
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 
 FEED_URL = "https://ssl.smn.gob.ar/CAP/AR.php"
@@ -88,28 +90,62 @@ def _parsear_cap_xml(xml_text: str):
         return None
 
 
-def _bajar_alertas_vigentes() -> list:
-    alertas = []
+def _extraer_links_del_indice(texto: str) -> list:
+    """El índice de AR.php puede llegar como RSS/XML real (<item><link>...)
+    o como una página HTML con enlaces "Ver XML CAP" a cada archivo —
+    el SMN cambió el formato en algún momento sin avisar, y nuestro parser
+    original solo cubría el caso RSS, por eso dejamos de ver alertas: el
+    XML parser tiraba excepción con la página HTML y volvíamos lista vacía
+    en silencio. Probamos RSS primero y, si no sale nada, caemos a extraer
+    cualquier link que termine en .xml por regex (sin depender de un parser
+    de HTML que no está en requirements.txt)."""
+    links = []
     try:
-        resp = requests.get(FEED_URL, timeout=10)
-        resp.raise_for_status()
-        root = ET.fromstring(resp.content)
+        root = ET.fromstring(texto)
         links = [item.findtext("link") for item in root.iter("item")]
-        links = [l for l in links if l]
+        links = [l.strip() for l in links if l and l.strip()]
+    except ET.ParseError:
+        pass
+
+    if not links:
+        links = re.findall(r'href="([^"]+\.xml)"', texto)
+        links = list(dict.fromkeys(l.strip() for l in links if l.strip()))  # dedup, conserva orden
+
+    return links
+
+
+def _bajar_alertas_vigentes() -> list:
+    try:
+        resp = requests.get(FEED_URL, timeout=15)
+        resp.raise_for_status()
+        links = _extraer_links_del_indice(resp.text)
     except Exception as e:
         print(f"--> [SMN] No se pudo bajar el feed de alertas: {e}")
-        return alertas
+        return []
 
-    for link in links:
+    if not links:
+        print("--> [SMN] El índice de alertas respondió pero no se encontró ningún link a CAP XML.")
+        return []
+
+    def _bajar_y_parsear(link):
         try:
             r = requests.get(link, timeout=10)
             r.raise_for_status()
-            alerta = _parsear_cap_xml(r.text)
-            if alerta:
-                alertas.append(alerta)
+            return _parsear_cap_xml(r.text)
         except Exception as e:
             print(f"--> [SMN] No se pudo bajar/parsear {link}: {e}")
-            continue
+            return None
+
+    # El SMN publica 100+ alertas vigentes para todo el país a la vez —
+    # bajarlas una por una tardaría minutos. Las bajamos en paralelo (igual
+    # de liviano, sin librerías nuevas) para que la respuesta no se cuelgue.
+    alertas = []
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        futuros = [pool.submit(_bajar_y_parsear, link) for link in links]
+        for fut in as_completed(futuros):
+            alerta = fut.result()
+            if alerta:
+                alertas.append(alerta)
     return alertas
 
 
