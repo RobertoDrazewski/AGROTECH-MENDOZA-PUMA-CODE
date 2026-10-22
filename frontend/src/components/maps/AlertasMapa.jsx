@@ -25,13 +25,22 @@ function formatearFecha(iso) {
 }
 
 // Ajusta el encuadre a los cuarteles (no a las alertas, que pueden cubrir
-// medio país): así el mapa siempre arranca centrado en tus fincas.
+// medio país): así el mapa siempre arranca centrado en tus fincas, bien de
+// cerca. Usa los vértices reales de la geocerca cuando ya está marcada (más
+// preciso que el punto GPS solo) y el mismo maxZoom que VineyardMap.jsx para
+// que el encuadre se sienta igual en todas las vistas con mapa.
 function AjustarVista({ cuarteles }) {
   const map = useMap();
   useEffect(() => {
     if (!cuarteles.length) return;
-    const bounds = L.latLngBounds(cuarteles.map((c) => [c.lat, c.lon]));
-    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 12 });
+    const puntos = cuarteles.flatMap((c) =>
+      c.geocerca && c.geocerca.length >= 3
+        ? c.geocerca.map((p) => [p.lat ?? p[0], p.lon ?? p[1]])
+        : [[c.lat, c.lon]]
+    );
+    if (!puntos.length) return;
+    const bounds = L.latLngBounds(puntos);
+    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
   }, [cuarteles, map]);
   return null;
 }
