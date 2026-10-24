@@ -12,3 +12,4 @@ certifi==2024.8.30
 openai==1.51.0
 scikit-learn==1.5.2
 joblib==1.4.2
+cryptography==43.0.3
