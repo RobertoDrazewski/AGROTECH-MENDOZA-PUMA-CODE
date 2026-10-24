@@ -42,7 +42,7 @@ const char* WIFI_SSID = "Adriana Abad";
 const char* WIFI_PASS = "Abuela123";
 
 const char* BACKEND_URL =
-  "https://agrotech-mendoza-puma-code-production.up.railway.app/api/v1/telemetria/ingest";
+  "https://api.agrotech-pumacode.com.ar/api/v1/telemetria/ingest";
 
 const char* VINEDO_ID = "Patio_Casa";
 const char* NODE_ID   = "heltec-patio-01";
